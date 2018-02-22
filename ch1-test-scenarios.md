@@ -4,5 +4,22 @@ A series of experiments using the ns-3 network simulator, the LoRa module and th
 
 ## Experiment #1 - LoRa Gateway Coverage
 
+The objective of this experiment is to determine the maximum coverage of a LoRa gateway as a function of the SF used. Additionally also the throughput and the delay are computed for each SF.
+
+
+
+Scenario Parameters: 
+
+* Propagation model : Alfa Friis with alfa = 3.29;
+* Signal propagation speed: light speed;
+* Drone altitude: 60 m;
+* LoRa Node Altitude: 1m;
+* LoRa Node speed : constant 1 m/s along the x axis;
+* Interval between packets : 10 s;
+* Transmission Power: 14dBm;
+
+
+  
+
 ## Experiment #2 - LoRa Gateway Devices Support
 

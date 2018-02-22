@@ -24,6 +24,14 @@ This model needs to be combined with a suited propagation model when the signal 
 
 For the communication between the UAVs a Friis model is also considered since no obstacles are present between the UAVs.
 
+The model described in [4] is also considered as an alternative model. The model is a variation of the Friis model where the distance is elevated to a parameter alfa determined experimentally.
+
+![img](http://ieeexplore.ieee.org/mediastore/IEEE/content/media/6916489/6927672/6927707/6927707-table-4-small.gif)
+
+The average alfa is 3.29.
+
+In order to determine the more realistic one, a series of experiments will be conducted.
+
 ## Average Trees height
 
 The average trees height is important in order to determine the altitude at which the drones should fly. To make the problem tractable, only forests in Portugal mainland are considered.
@@ -51,3 +59,5 @@ Given the above information, we can assume two different scenarios. A more signi
 [2]  Anastassiu HT, Vougioukas S, Fronimos T, et al. A Computational Model for Path Loss in Wireless Sensor Networks in Orchard Environments. Sensors (Basel, Switzerland). 2014;14(3):5118-5135. doi:10.3390/s140305118.
 
 [[3]](http://journals.openedition.org/mediterranee/6863) Leite, Flora & Lourenço, Luciano & Bento-Gonçalves, António. (2013). Large forest fires in mainland Portugal, brief characterization. Méditerranée. 121. 53-66. 10.4000/mediterranee.6863.
+
+[[4]](http://ieeexplore.ieee.org/document/6927707/) S. Jiang, C. Portillo-Quintero, A. Sanchez-Azofeifa and M. H. MacGregor, "Predicting RF path loss in forests using satellite measurements of vegetation indices," 39th Annual IEEE Conference on Local Computer Networks Workshops, Edmonton, AB, 2014, pp. 592-596.
