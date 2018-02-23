@@ -33,10 +33,7 @@ using namespace ns3;
 NS_LOG_COMPONENT_DEFINE("Experiment1");
 
 double l_frequency = 867e+06;
-double f_depth = 40; 
-double distance = 10;
-double simulationTime = 10;
-uint8_t sf = 5; // data rate goes from 0 to 5
+int sf = 0; // data rate goes from 0 to 5
 std::string filename;
 
 
@@ -137,6 +134,7 @@ main (int argc, char* argv[]){
     std::cout.rdbuf(out.rdbuf());
 
     std::cout << "Node  |   time   |   delay   |    throughput   |     x_coordinate\n" << std::endl;
+    std::cout << std::to_string(sf) << std::endl;
 
   	/************************
     *  Create the channel  *
@@ -204,7 +202,7 @@ main (int argc, char* argv[]){
 
       Ptr<LoraNetDevice> loraNetDevice = node->GetDevice (0)->GetObject<LoraNetDevice> ();
       Ptr<EndDeviceLoraMac> mac = loraNetDevice->GetMac ()->GetObject<EndDeviceLoraMac> ();
-      mac -> SetDataRate(4);
+      mac -> SetDataRate(sf);
     }
 
     /*********************
