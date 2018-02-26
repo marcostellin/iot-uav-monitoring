@@ -58,4 +58,19 @@ But what's the main cause of packet loss? Interference from other nodes that are
 
 ## Experiment #3 - Multiple Gateways
 
-The same scenario of experiment 2 will be run but with the presence of multiple gateways. The results are not expected to change by much given that collisions are independent of the number of gateways deployed.
+The same scenario of experiment 2 will be run but with the presence of multiple gateways. Prior to the experiments it was hypothesized that PDR would not improve. This hypothesis proved to be wrong. In fact, even if most packets are lost due to interference, a relevant quantity is lost due to the lack of available receiving paths at the gateways. In the simulation each gateway has 8 receiving paths centered around 3 different frequencies. By increasing the number of gateways in the same coverage area, we decrease the number of packets lost  because of unavailable gateways, thus increasing significantly the PDR. The best result are seen with low data rates (SF12 for example) where the presence of more receiving paths increases the possibilities of packet reception in at least one of the gateways.
+
+Some results showing this behavior are shown below.
+
+![img](https://image.ibb.co/hhywsc/exp3_i10_dr0.png)
+
+![img](https://image.ibb.co/nci7yH/exp3_i10_dr5.png)
+
+![img](https://image.ibb.co/n8MGsc/exp3_i30_dr0.png)
+
+![img](https://image.ibb.co/gr2NXc/exp3_i30_dr5.png)
+
+Given the results, the presence of overlapping gateways should be considered if an efficient network needs to be deployed.
+
+## Experiment #4 - Mix of nodes with different SFs
+
