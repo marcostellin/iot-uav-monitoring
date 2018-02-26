@@ -6,8 +6,6 @@ A series of experiments using the ns-3 network simulator, the LoRa module and th
 
 The objective of this experiment is to determine the maximum coverage of a LoRa gateway as a function of the SF used. Additionally also the throughput and the delay are computed for each SF.
 
-
-
 Scenario Parameters: 
 
 * Propagation model : Alfa Friis with alfa = 3.29;
@@ -35,7 +33,29 @@ Given the critical function of our infrastructure, a SF of 7, 8 or 9 may be desi
 
 ## Experiment #2 - LoRa Gateway devices support
 
-The objective of this experiment is to determine the number of simultaneous devices that a single gateway can service and with what QoS in term of PDR.
-At the beginning of each simulation, the SF will be fixed and the simulated area radius will be set according to the results obtained in Experiment #1. In this way all the devices should fall in the coverage area of the gateway sitting in the middle of the circular area. The LoRa nodes are fixed and randomly distributed. 
-The number of nodes will vary between 
-Each node will periodically send a packet to the gateway. The period will be set to 10 seconds and eventually increased.
+The objective of this experiment is to determine the number of simultaneous devices that a single gateway can service and with what QoS in terms of PDR.
+At the beginning of each simulation, the SF will be fixed and the simulated area radius is set to 3000 m. In this way all the devices fall in the coverage area of the gateway sitting in the middle of the circular area. The LoRa nodes are fixed and uniformly distributed. 
+The number of nodes will vary between 10 and 300. The total simulation time is 10 minutes.
+Each node will periodically send a packet to the gateway. Different periods have been tested to check if there's a relation between the periods and the PDR. All the parameters not mentioned in this section are the same as the ones used in the previous experiment.
+
+A number of plots have been made after the simulations: 
+
+![img](https://image.ibb.co/kwSYNc/exp2_10s.png)
+
+![img](https://image.ibb.co/cVh02c/exp2_20s.png)
+
+![img](https://image.ibb.co/bUkbax/exp2_30s.png)
+
+![img](https://image.ibb.co/bE5yoH/exp2_60s.png)
+
+![img](https://image.ibb.co/gGsuTH/exp2_100s.png)
+
+As expected, it's possible to see that the SF, the number of nodes and the sending period all influence the PDR. The best results are obtained with a SF of 7: even when packets are transmitted with high frequency (1 packet / 10 seconds) the PDR remains above 0.9 with 50 nodes on the ground.
+
+A mix of SFs and more gateways could improve the results. 
+
+But what's the main cause of packet loss? Interference from other nodes that are transmitting. LoRa is in fact basically an ALOHA protocol with no coordination mechanism to access the network. If two nodes transmit at the same time the packets are simply lost. It is immediately clear why higher SF means more packet loss: the time on air increases with the SF and thus the probability of collision. If  a high PDR and high frequency is an objective a low SF should be chosen. Of course this comes with some disadvantages, like a reduced battery life and coverage.
+
+## Experiment #3 - Multiple Gateways
+
+The same scenario of experiment 2 will be run but with the presence of multiple gateways. The results are not expected to change by much given that collisions are independent of the number of gateways deployed.
