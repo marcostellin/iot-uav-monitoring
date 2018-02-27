@@ -30,7 +30,9 @@ The model described in [4] is also considered as an alternative model. The model
 
 The average alfa is 3.29.
 
-In order to determine the more realistic one, a series of experiments will be conducted.
+In order to determine the more realistic model, a series of experiments will be conducted.
+
+[EDIT: 27/02/2018] In order to account for different conditions of the foliage and other random variation in the environment, the alpha may be randomly selected (with distribution to be chosen) among the minimum and maximum value in the table each time a packet is sent. 
 
 ## Average Trees height
 
