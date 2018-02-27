@@ -54,7 +54,7 @@ As expected, it's possible to see that the SF, the number of nodes and the sendi
 
 A mix of SFs and more gateways could improve the results. 
 
-But what's the main cause of packet loss? Interference from other nodes that are transmitting. LoRa is in fact basically an ALOHA protocol with no coordination mechanism to access the network. If two nodes transmit at the same time the packets are simply lost. It is immediately clear why higher SF means more packet loss: the time on air increases with the SF and thus the probability of collision. If  a high PDR and high frequency is an objective a low SF should be chosen. Of course this comes with some disadvantages, like a reduced battery life and coverage.
+But what's the main cause of packet loss? Interference from other nodes that are transmitting. LoRa is in fact basically an ALOHA protocol with no coordination mechanism to access the network. If two nodes transmit at the same time the packets are simply lost. It is immediately clear why higher SF means more packet loss: the time on air increases with the SF and thus the probability of collision. If  a high PDR and high frequency is an objective a low SF should be chosen. Of course this comes with some disadvantages, like a reduced battery life(????might not be true) and coverage.
 
 ## Experiment #3 - Multiple Gateways
 
@@ -73,4 +73,102 @@ Some results showing this behavior are shown below.
 Given the results, the presence of overlapping gateways should be considered if an efficient network needs to be deployed.
 
 ## Experiment #4 - Mix of nodes with different SFs
+
+In this experiment we try to mix LoRa nodes with different SFs to determine if the presence of mixed nodes configurations improves the PDR. 
+Multiple sub-experiments will be performed.
+
+### Experiment #4.1
+
+* Number of gateways: 1
+* Number of nodes: 300
+* 150 nodes with DR4
+* 150 nodes with DR5
+
+Objective: determine if the overall PDR is better than having 300 nodes with DR5.
+
+The result of the mixed environment are reported below:
+
+ DR1|DR2|Period|PDR (sf1)|PDR (sf2) | PDR (overall) | PDR (DR5 300 nodes)
+:-------|:------:|-------:|--------:|-----------:|---------------:|-------------
+5 | 4  | 10 | 0.729 | 0.539 | 0.665| 0.542
+5 | 4  | 20 | 0.837 | 0.738 | 0.788| 0.738
+5 | 4  | 30 | 0.895 | 0.820 | 0.858| 0.822
+5 | 4  | 60 | 0.956 | 0.909 | 0.932| 0.913
+
+It seems that the overall PDR improves if half of the nodes use DR4 instead of DR5. 
+
+Let's take a look at the results of running a simulation with 150 nodes all with DR4:
+
+ DR|Period|PDR
+:-------|:------:|-------
+4  | 10 | 0.558
+4  | 20 | 0.726 
+4  | 30 | 0.809 
+4  | 60 | 0.905
+
+And now with 150 nodes with DR5:
+
+ DR|Period|PDR
+:-------|:------:|-------
+5  | 10 | 0.727
+5  | 20 | 0.853 
+5  | 30 | 0.908 
+5  | 60 | 0.959
+
+We can clearly see that the PDR of the individual streams remains more or less the same. This experiment clearly shows that spreading factors are othogonal and can thus be used to create different networks working simultaneusly. This fact can be used to split the nodes in classes. Each class will have assigned a specific DR according to the priority of that specific class.
+
+
+## Conclusions
+
+After running the above mentioned experiments (more experiments may be needed in the future), it's possible to say that:
+
+* PDR is affected by the number of gateways serving an area;
+* PDR is affected by the SF used by nodes (low SF means low time-on-air, thus less collisions)
+* PDR is affected by frequency of packets sent: clearly high frequency means higher collision probability and reduced probability to find a free gateway
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
