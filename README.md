@@ -21,12 +21,13 @@ The quality of the solution will be evaluated by simulating the scenario using t
 ## Sections
 
 * LoRa protocol
-  * [LoRa Specifications]()
-  * [LoRa Considerations]()
+  * [LoRa Specifications](https://github.com/marcostellin/iot-uav-monitoring/blob/master/lora.md)
 * Simulations
-  * [ns-3 Introduction]()
-  * [Scenario, parameters, propagation models]()
-  * [LoRa ns3 module performance tests]()
+  * [ns-3 Introduction]() [TODO]
+  * [Scenario, parameters, propagation models](https://github.com/marcostellin/iot-uav-monitoring/blob/master/scenario-propagation-model.md)
+  * [LoRa ns3 module performance tests](https://github.com/marcostellin/iot-uav-monitoring/blob/master/test-scenarios.md)
+  * [LoRa Considerations](https://github.com/marcostellin/iot-uav-monitoring/blob/master/lora-considerations.md)
 * Scratch
-  * [Random Ideas]()
-  * [Useful facts and resources]()
+  * [Random Ideas](https://github.com/marcostellin/iot-uav-monitoring/blob/master/ideas.md)
+  * [Useful facts and resources](https://github.com/marcostellin/iot-uav-monitoring/blob/master/useful-resources.md)
+
