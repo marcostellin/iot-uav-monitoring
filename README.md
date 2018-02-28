@@ -17,3 +17,16 @@ The scenario is a forest where one or multiple wildfires have been detected. The
 ## Tools
 
 The quality of the solution will be evaluated by simulating the scenario using the [ns-3](https://www.nsnam.org/) network simulator with the [LoRa module](https://github.com/DvdMgr/lorawan) and the WiFi module.
+
+## Sections
+
+* LoRa protocol
+  * [LoRa Specifications]()
+  * [LoRa Considerations]()
+* Simulations
+  * [ns-3 Introduction]()
+  * [Scenario, parameters, propagation models]()
+  * [LoRa ns3 module performance tests]()
+* Scratch
+  * [Random Ideas]()
+  * [Useful facts and resources]()
