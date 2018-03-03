@@ -20,6 +20,10 @@ The quality of the solution will be evaluated by simulating the scenario using t
 
 ## Sections
 
+* Problem definition
+  * Wildfires characterization [TODO]
+  * Wildfire suppression techniques [TODO]
+  * Advantages and problems of UAVs and IoT for data collection
 * LoRa protocol
   * [LoRa Specifications](https://github.com/marcostellin/iot-uav-monitoring/blob/master/lora.md)
 * Simulations

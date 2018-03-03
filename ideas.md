@@ -8,3 +8,7 @@ Knowing the position of some of the nodes, the UAV can run periodically a reinfo
 
 Depending on the number of UAVs, the remaining UAVs should be deployed in order to increase the coverage while keeping the distance from other UAVs. These initial UAVs are the ones collecting data. An additional fleet should be sent to create a mesh WiFi network. By knowing the range of communication of each UAV and the position of the LoRa gateways it may be possible to run a centralized algorithm that determines each time the minimum number of UAVs and their position in order to create a mesh network.
 
+
+
+* Group Steiner Tree Problem
+

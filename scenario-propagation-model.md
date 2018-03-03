@@ -52,7 +52,7 @@ Citing [3]:
 
 >If we observe the information regarding large forest fires in the last 30 years, we will see that the most frequent LFFs were those which burned areas between 100 and 500 ha, representing on average 77.9% of the total number of LFFs, and were responsible for 40.3% of the area burned by LFFs during that period. For LFFs over 500 ha, the most frequent ones were those which burned areas between 1 000 and 5 000 ha, representing 8.7% of the total, and were responsible for 30.9% of the area burned by LFFs (Table 2). 
 
-Given the above information, we can assume two different scenarios. A more significant one with a 500ha extension (5 Km^2^) and a more extreme one with 3000-5000 ha (30 - 50 Km^2^). Initially only the 500ha scenario will be considered.
+Given the above information, we can assume two different scenarios. A more significant one with a 500ha extension (5 Km^2^) and a more extreme one with 3000-5000 ha (30 - 50 Km^2^). Initially only the 500ha scenario will be considered. 
 
 ## References
 
