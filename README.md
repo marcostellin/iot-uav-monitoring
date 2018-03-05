@@ -21,7 +21,7 @@ The quality of the solution will be evaluated by simulating the scenario using t
 ## Sections
 
 * Introduction
-  * Wildfires figures, characterization and suppression techniques
+  * [Wildfires figures, characterization and suppression techniques](https://github.com/marcostellin/iot-uav-monitoring/blob/master/wildfires-characterization.md)
   * IoT and UAV solutions for forest fire monitoring and disaster management [TODO]
   * Challenges of IoT and UAV for disaster management [TODO]
 * LPWAN and LoRa
