@@ -1,4 +1,4 @@
-# IoT and UAVs for forest fires mitigation and monitoring
+# Internet of Things: Wireless Sensor Networks and Body Area Networks for Firefighting
 
 ## The Internet of Things
 
@@ -14,9 +14,21 @@ If the above definition is considered, the IoT is characterized by:
 * __Devices offer services__: the interconnected devices offer a service through their sensing and actuating interfaces;
 * __Connection to the Internet__: the devices, through the direct or indirect connection to the public Internet network, can be accessed anywhere, anytime.
 
+The typical IoT architecture can be logically divided in three layers:
+
+* __Perception Layer__: this layer is responsible for sensing objects and collecting information from the surrounding environment. It is composed of different kind of sensors, depending on the application of the IoT system;
+* __Network Layer__: deals with the communication of the information retrieved by the perception layer to one or multiple central nodes by means of appropriate communication protocols. The network layer may be a mobile network, the Internet, radio, satellite, etc.
+* __Application Layer__: provides a customized service to the end users by analyzing data coming retrieved by the perception layer. The data is then displayed in order to maximize the end user experience.
+
 This broad definition of IoT includes an equally broad range of possible applications: environment monitoring, health monitoring, smart grids systems, home automation, etc.
 
 For the purpose of this thesis, only environment, health and position monitoring applications for wildfire prevention and firemen support are considered. For a more comprehensive overview of the possible applications, we refer to [2].
+
+## Wireless Sensors Networks
+
+## Body Area Networks
+
+
 
 
 
