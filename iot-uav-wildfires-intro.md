@@ -34,15 +34,15 @@ One possible WSN solution using this approach for detecting wildfires is present
 
 Even tough WSNs using multi-hop routing protocols work, a particular attention should be used when deploying the sensors: a sensor placed too far from the others may not be able to relay the data to the central node. Different environments conditions, influencing the signal propagation, can make the decision of how many sensors and where to place them very difficult. Even tough retrieving data from WSNs is not the primary concern of our system, the ability of getting data from such systems could be a useful secondary feature especially if the WSN network infrastructure has been compromised by the fire.
 
-## Body Area Networks
+## Wireless Body Area Networks
 
+Wireless Body Sensor Area Networks (WBSAN) are networks of devices equipped with different kind of sensors that communicate over a very short distance using a wireless connection. Sensors are typically small since they need to be positioned on the body or on equipment placed in the body without interfering with the activities of the holder. WBSANs found their main applications in health monitoring, where various kinds of physiological conditions can be monitored in real-time.
 
+WBSANs are particularly fit to support the activities of firefighters during emergencies. Usually an emergency expects the participation of one or more firemen teams coordinated by an Incident Commander (IC). The IC manages the operations from a safe position and communicates with the firemen on the ground using radio communications. Firemen provides the IC with all the relevant information, such as environment conditions, their positions or dangerous situations, but this capability is limited by what the fireman can see and perceive and is bound to human errors. Relevant data may instead be sent to the IC by a WSAN installed in the firemen body or equipment. 
 
+An international survey on many fire departments described in [6] shows that firemen would greatly benefit from the next generation of smart equipment. At the top of the list of features that firemen require the most is a system to monitor their position in real-time at any moment during the operation. Monitoring of noxious gases, heat, heart rate, blood pressure and body temperature come later in the list. All these functions can be carried out by a properly configured WSBAN. In fact in [7] the authors proposes a comprehensive WSBAN to monitor different health parameters of firefighters along with the position in an indoor environment using the RSSI of the signal. In the outdoor environment considered in this project, a more precise GPS module can be used instead.
 
-
-
-
-
+Given the importance of communicating such parameters, it's of utmost importance for our system to be able to receive the data coming from the firemen WSBANs and relay it to the IC outpost in a timely manner. 
 
 
 
@@ -55,6 +55,12 @@ Even tough WSNs using multi-hop routing protocols work, a particular attention s
 \[4\] [Forest Fire Modeling and Early Detection using Wireless Sensor Networks](https://www.cs.sfu.ca/~mhefeeda/Papers/ahswn09a.pdf)
 
 \[5\] [Forest Fire Monitoring System Based On ZIG-BEE WirelessSensor Network](https://www.researchgate.net/publication/226288294_Forest_fire_detection_system_based_on_ZigBee_wireless_sensor_network)
+
+\[6\] [What do firefighters desire from the next generation of personal protective equipment? Outcomes from an international survey](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4591136/pdf/indheaoth-53-434.pdf) 
+
+\[7\] [Comprehensive monitoring of firefighters by a Wireless Body Area Sensor Network](http://ieeexplore.ieee.org/document/6616245/)
+
+
 
 
 
