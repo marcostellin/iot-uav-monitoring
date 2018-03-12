@@ -22,8 +22,8 @@ The quality of the solution will be evaluated by simulating the scenario using t
 
 * Introduction
   * [Wildfires figures, characterization and suppression techniques](https://github.com/marcostellin/iot-uav-monitoring/blob/master/wildfires-characterization.md)
-  * Internet of Things: Wireless Sensor Networks and Body Area Networks for firefighting [TODO]
-  * Unmanned Aerial Vehicles Overview [TODO]
+  * [Internet of Things: Wireless Sensor Networks and Body Area Networks for firefighting](https://github.com/marcostellin/iot-uav-monitoring/blob/master/iot-uav-wildfires-intro.md)
+  * [Unmanned Aerial Vehicles Overview](https://github.com/marcostellin/iot-uav-monitoring/blob/master/uav-intro.md)
   * UAV-Assisted disaster management  [TODO]
   * Challenges of IoT and UAV for disaster management [TODO]
 * LPWAN and LoRa
@@ -31,7 +31,7 @@ The quality of the solution will be evaluated by simulating the scenario using t
   * LPWAN Technologies
   * [LoRa](https://github.com/marcostellin/iot-uav-monitoring/blob/master/lora.md)
 * Simulations
-  * [ns-3 Introduction]() [TODO]
+  * [ns-3 Introduction](https://github.com/marcostellin/iot-uav-monitoring/blob/master/ns3-intro.md)
   * [Scenario, parameters, propagation models](https://github.com/marcostellin/iot-uav-monitoring/blob/master/scenario-propagation-model.md)
   * [LoRa ns3 module performance tests](https://github.com/marcostellin/iot-uav-monitoring/blob/master/test-scenarios.md)
   * [LoRa Considerations](https://github.com/marcostellin/iot-uav-monitoring/blob/master/lora-considerations.md)
