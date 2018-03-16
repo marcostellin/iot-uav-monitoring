@@ -26,7 +26,7 @@ The quality of the solution will be evaluated by simulating the scenario using t
   * [Unmanned Aerial Vehicles Overview](https://github.com/marcostellin/iot-uav-monitoring/blob/master/uav-intro.md)
   * [UAV-Assisted disaster management](https://github.com/marcostellin/iot-uav-monitoring/blob/master/uav-disaster-management.md)
 * LPWAN and LoRa
-  * LPWAN introduction
+  * [LPWAN introduction](https://github.com/marcostellin/iot-uav-monitoring/blob/master/lpwan-intro.md)
   * LPWAN Technologies
   * [LoRa](https://github.com/marcostellin/iot-uav-monitoring/blob/master/lora.md)
 * Simulations
