@@ -28,7 +28,7 @@ A wildfire is always attacked by firemen from a location that is safe from fire 
 
 Once one or multiple anchor points are chosen, the fire can be attacked by using one of the following approaches:
 
-* __Direct__: this attack is made on the fire edge or perimeter. the . It's particularly useful when the fire is small and it's possible to stop the fire with water or dirt.
+* __Direct attack__: this attack is made on the fire edge or perimeter. the . It's particularly useful when the fire is small and it's possible to stop the fire with water or dirt.
 * __Parallel attack__: a fireline (an artificial line built to stop the fire) is build at some distance from the fire edge to backfire the unburned fuel on the way of the fire. 
 * __Indirect attack__: this kind of attack is done whenever a direct attack would be too dangerous for the safety of the firemen. It uses natural or human-made firelines to stop fast-spreading fires. The fireline may be built by the controlled burning of some areas to block the fire.
 
