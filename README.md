@@ -29,6 +29,7 @@ The quality of the solution will be evaluated by simulating the scenario using t
   * [LPWAN introduction](https://github.com/marcostellin/iot-uav-monitoring/blob/master/lpwan-intro.md)
   * [LPWAN Technologies](https://github.com/marcostellin/iot-uav-monitoring/blob/master/lpwan-technologies.md)
   * [LoRa and LoRaWAN](https://github.com/marcostellin/iot-uav-monitoring/blob/master/lora.md)
+  * [LPWAN Comparison](https://github.com/marcostellin/iot-uav-monitoring/blob/master/LPWAN%20comparison.md)
 * Simulations
   * [ns-3 Introduction](https://github.com/marcostellin/iot-uav-monitoring/blob/master/ns3-intro.md)
   * [Scenario, parameters, propagation models](https://github.com/marcostellin/iot-uav-monitoring/blob/master/scenario-propagation-model.md)
