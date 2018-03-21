@@ -12,7 +12,7 @@ Typically a UAV system is formed by multiple air vehicles and other additional s
 
 A diagram of the system, showing the above mentioned components can be seen in the picture below.
 
-![img]()
+![img](https://image.ibb.co/e0fYQH/uav_system.png)
 
 UAV can be classified, depending on their dimensions, in four categories:
 
@@ -33,3 +33,7 @@ All the engines, except for the electric motor that makes use of batteries or so
 In order to fly with a high degree of autonomy, air vehicles need to be equipped with some sort of controller that regulate, for example, the altitude and the airspeed. This control is usually achieved by using a feedback or closed-loop controller in conjunction with a set of sensors that typically include an altimeter, a speed meter and some sort of positioning device (a GPS for example). The measurements of the sensors are used by the controller to compute the right actuation to adjust the roll, pitch and/or yaw of the vehicle. Typically the control is limited to one axis (roll) or two axis (roll + pitch) to limit the controller complexity. Almost all UAVs are nowadays equipped with a GPS, that can be used to complement the measurements of the other sensors and for accurate path planning.
 
 [ADD PART ABOUT COMMUNICATION WITH UAV]
+
+## References
+
+[1] Introduction to UAV Systems, Fahlstrom and Gleason
