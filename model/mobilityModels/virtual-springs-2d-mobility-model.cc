@@ -104,7 +104,9 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
   double speed = m_speed;
   
   //Compute the direction of the movement
-  Vector force = VirtualSprings2dMobilityModel::ComputeAtaForce();
+  Vector forceAta = VirtualSprings2dMobilityModel::ComputeAtaForce();
+  Vector forceAtg = VirtualSprings2dMobilityModel::ComputeAtgForce();
+  Vector force = forceAta + forceAtg;
   //NS_LOG_DEBUG("Force");
   //NS_LOG_DEBUG(force);
   double k = speed/std::sqrt(force.x*force.x + force.y*force.y);
@@ -150,8 +152,7 @@ Vector
 VirtualSprings2dMobilityModel::ComputeAtaForce()
 {
   Vector myPos = m_helper.GetCurrentPosition ();
-  NS_LOG_DEBUG("myPos=");
-  NS_LOG_DEBUG(myPos);
+  NS_LOG_DEBUG("myPos=" << myPos);
 
   double fx = 0;
   double fy = 0;
@@ -162,10 +163,7 @@ VirtualSprings2dMobilityModel::ComputeAtaForce()
     Ptr<MobilityModel> otherMob = node -> GetObject<MobilityModel>();
     Vector otherPos = otherMob -> GetPosition();
     double dist = CalculateDistance(myPos, otherPos);
-    NS_LOG_DEBUG("otherPos=");
-    NS_LOG_DEBUG(otherPos);
-    NS_LOG_DEBUG("Distance");
-    NS_LOG_DEBUG(dist);
+    NS_LOG_DEBUG("otherPos=" << otherPos << " distace= " << dist);
 
     if (dist > 0  && dist < m_rangeAta)
     {   
@@ -188,7 +186,155 @@ VirtualSprings2dMobilityModel::ComputeAtaForce()
   // NS_LOG_DEBUG("ForceY:");
   // NS_LOG_DEBUG(fy);
 
+  NS_LOG_DEBUG("ATA_FORCE=" << Vector(fx,fy,0));
+
   return Vector(fx,fy,0);
+}
+
+Vector
+VirtualSprings2dMobilityModel::ComputeAtgForce()
+{
+  Vector myPos = m_helper.GetCurrentPosition ();
+  myPos.z = 0;
+
+  double kAtg = VirtualSprings2dMobilityModel::ComputeKatg();
+
+  double fx = 0;
+  double fy = 0;
+
+  for (uint16_t j = 0; j < m_atgNodes.size(); j++)
+  {
+    Ptr<Node> node = NodeList::GetNode(m_atgNodes[j]);
+    Ptr<MobilityModel> mob = node -> GetObject<MobilityModel>();
+    Vector pos = mob -> GetPosition();
+    pos.z = 0;
+
+    double dist = CalculateDistance(myPos, pos);
+    NS_LOG_DEBUG("atgNodePos=" << pos << " distace= " << dist);
+
+    if (dist < m_rangeAtg)
+    {   
+
+        double disp = dist - m_l0Atg;
+        Vector diff = pos - myPos;
+        double force = kAtg*disp;
+        double k = force/std::sqrt(diff.x*diff.x + diff.y*diff.y);
+
+        fx += k*diff.x;
+        fy += k*diff.y;
+
+        // double theta = difference.y / difference.x;
+        // fx += -m_kAta*disp*cos(theta);
+    }
+   }
+
+   NS_LOG_DEBUG("ATG_FORCE=" << Vector(fx,fy,0));
+
+   return Vector(fx,fy,0);
+
+}
+
+int
+VirtualSprings2dMobilityModel::GetMaxNodesNeighbours()
+{
+  Vector myPos = m_helper.GetCurrentPosition ();
+  myPos.z = 0;
+
+  int curMax = 0;
+  for (uint16_t j = 0; j < m_ataNodes.size(); j++)
+  {
+    Ptr<Node> ataNode = NodeList::GetNode(m_ataNodes[j]);
+    Ptr<MobilityModel> ataNodeMob = ataNode -> GetObject<MobilityModel>();
+    Vector ataNodePos = ataNodeMob -> GetPosition();
+    ataNodePos.z = 0;
+
+    double dist = CalculateDistance(myPos, ataNodePos);
+
+    if (dist < m_rangeAta)
+    {
+      int numAtgNodes = VirtualSprings2dMobilityModel::ComputeNumGroudNodes(ataNode);
+
+      if (numAtgNodes > curMax){
+        curMax = numAtgNodes;
+      }
+    }
+  }
+
+  NS_LOG_DEBUG("Max nodes of neighbours = " << curMax);
+
+  return curMax;
+}
+
+double
+VirtualSprings2dMobilityModel::ComputeKatg()
+{
+  int coveredNodes = VirtualSprings2dMobilityModel::ComputeNumGroudNodes();
+  int maxNodesNeighbours = VirtualSprings2dMobilityModel::GetMaxNodesNeighbours();
+
+  if (!maxNodesNeighbours)
+  {
+    NS_LOG_DEBUG("kAtg = 1" );
+    return 1;
+  }
+
+  NS_LOG_DEBUG("kAtg = " << coveredNodes/maxNodesNeighbours);
+
+  return coveredNodes/maxNodesNeighbours;
+}
+
+int
+VirtualSprings2dMobilityModel::ComputeNumGroudNodes(Ptr<Node> node )
+{
+  Ptr<MobilityModel> mob = node -> GetObject<MobilityModel>();
+  Vector pos = mob -> GetPosition();
+  pos.z = 0;
+
+  int counter = 0;
+  for (uint16_t j = 0; j < m_atgNodes.size(); j++)
+  {
+    Ptr<Node> atgNode = NodeList::GetNode(m_atgNodes[j]);
+    Ptr<MobilityModel> atgNodeMob = atgNode -> GetObject<MobilityModel>();
+    Vector atgNodePos = atgNodeMob -> GetPosition();
+    atgNodePos.z = 0;
+    double dist = CalculateDistance(pos, atgNodePos);
+
+    if (dist < m_rangeAtg)
+    {
+      counter++;
+    }
+  }
+
+  NS_LOG_DEBUG("Nodes covered=" << counter);
+
+  return counter;
+}
+
+int
+VirtualSprings2dMobilityModel::ComputeNumGroudNodes()
+{
+  Vector myPos = m_helper.GetCurrentPosition ();
+  myPos.z = 0;
+
+  int counter = 0;
+
+  for (uint16_t j = 0; j < m_atgNodes.size(); j++)
+  {
+    Ptr<Node> node = NodeList::GetNode(m_atgNodes[j]);
+    Ptr<MobilityModel> mob = node -> GetObject<MobilityModel>();
+    Vector pos = mob -> GetPosition();
+    pos.z = 0;
+    double dist = CalculateDistance(myPos, pos);
+
+    if (dist < m_rangeAtg)
+    {
+      counter++;
+    }
+  }
+
+  NS_LOG_DEBUG("Nodes covered=" << counter);
+
+  return counter;
+
 }
 
 void
@@ -202,6 +348,12 @@ VirtualSprings2dMobilityModel::AddAtaNode(uint32_t id)
 // {
 //   m_atgNodes = nodes;
 // }
+
+void
+VirtualSprings2dMobilityModel::AddAtgNode(uint32_t id)
+{
+  m_atgNodes.push_back(id); 
+}
 
 
 void

@@ -55,6 +55,7 @@ public:
    */
   static TypeId GetTypeId (void);
   void AddAtaNode(uint32_t nodes);
+  void AddAtgNode(uint32_t nodes);
   //void SetAtgNodes(std::vector<Ptr<Node>> nodes);
 
 
@@ -74,6 +75,13 @@ private:
    */
   void DoInitializePrivate (void);
   Vector ComputeAtaForce (void);
+  Vector ComputeAtgForce (void);
+  int GetMaxNodesNeighbours(void);
+  double ComputeKatg(void);
+  int ComputeNumGroudNodes(Ptr<Node> node);
+  int ComputeNumGroudNodes(void);
+
+
   virtual void DoDispose (void);
   virtual void DoInitialize (void);
   virtual Vector DoGetPosition (void) const;
