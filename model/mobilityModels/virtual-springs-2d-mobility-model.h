@@ -97,6 +97,7 @@ private:
   double m_rangeAtg; //<! tx range of ArG communications
   double m_l0Ata;
   double m_l0Atg;
+  double m_tol;
   
   std::vector<uint32_t> m_ataNodes;
   std::vector<uint32_t> m_atgNodes;

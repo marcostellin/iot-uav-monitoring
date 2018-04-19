@@ -53,6 +53,12 @@ VirtualSprings2dMobilityModel::GetTypeId (void)
                    DoubleValue (17.0),
                    MakeDoubleAccessor (&VirtualSprings2dMobilityModel::m_speed),
                    MakeDoubleChecker<double> ())
+
+    .AddAttribute ("Tolerance",
+                   "Minimum force to cause displacement",
+                   DoubleValue (30.0),
+                   MakeDoubleAccessor (&VirtualSprings2dMobilityModel::m_tol),
+                   MakeDoubleChecker<double> ())
                    
                    
     .AddAttribute ("kAta",
@@ -102,49 +108,36 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
 {
   m_helper.Update();
   double speed = m_speed;
+  //Vector myPos = m_helper.GetCurrentPosition();
   
   //Compute the direction of the movement
   Vector forceAta = VirtualSprings2dMobilityModel::ComputeAtaForce();
   Vector forceAtg = VirtualSprings2dMobilityModel::ComputeAtgForce();
   Vector force = forceAta + forceAtg;
-  //NS_LOG_DEBUG("Force");
-  //NS_LOG_DEBUG(force);
+
+  NS_LOG_DEBUG("ForceMod = " << force.GetLength());
+
   double k = speed/std::sqrt(force.x*force.x + force.y*force.y);
   Vector vector (k*force.x,
   				 k*force.y,
   				 0.0);
 
-  //NS_LOG_DEBUG("Velocity");
-  //NS_LOG_DEBUG(vector);
+  NS_LOG_DEBUG("Velocity = " << vector);
 
-  m_helper.SetVelocity(vector);
-  m_helper.Unpause();
+  if (force.GetLength () > m_tol)
+  {
+    m_helper.SetVelocity(vector);
+    m_helper.Unpause();
+  }
+  else 
+  {
+    m_helper.Pause();
+  }
 
   Time delayLeft = m_modeTime;
 
   DoWalk (delayLeft);
   
-  /*
-  m_helper.Update ();
-  double speed = m_speed->GetValue ();
-  double direction = m_direction->GetValue ();
-  Vector vector (std::cos (direction) * speed,
-                 std::sin (direction) * speed,
-                 0.0);
-  m_helper.SetVelocity (vector);
-  m_helper.Unpause ();
-
-  Time delayLeft;
-  if (m_mode == VirtualSprings2dMobilityModel::MODE_TIME)
-    {
-      delayLeft = m_modeTime;
-    }
-  else
-    {
-      delayLeft = Seconds (m_modeDistance / speed); 
-    }
-  DoWalk (delayLeft);
-  */
 }
 
 
@@ -152,7 +145,7 @@ Vector
 VirtualSprings2dMobilityModel::ComputeAtaForce()
 {
   Vector myPos = m_helper.GetCurrentPosition ();
-  NS_LOG_DEBUG("myPos=" << myPos);
+  //NS_LOG_DEBUG("myPos=" << myPos);
 
   double fx = 0;
   double fy = 0;
@@ -163,7 +156,7 @@ VirtualSprings2dMobilityModel::ComputeAtaForce()
     Ptr<MobilityModel> otherMob = node -> GetObject<MobilityModel>();
     Vector otherPos = otherMob -> GetPosition();
     double dist = CalculateDistance(myPos, otherPos);
-    NS_LOG_DEBUG("otherPos=" << otherPos << " distace= " << dist);
+    //NS_LOG_DEBUG("otherPos=" << otherPos << " distace= " << dist);
 
     if (dist > 0  && dist < m_rangeAta)
     {   
@@ -176,15 +169,9 @@ VirtualSprings2dMobilityModel::ComputeAtaForce()
         fx += k*diff.x;
         fy += k*diff.y;
 
-        // double theta = difference.y / difference.x;
-        // fx += -m_kAta*disp*cos(theta);
     }
    }
   
-  // NS_LOG_DEBUG("ForceX:");
-  // NS_LOG_DEBUG(fx);
-  // NS_LOG_DEBUG("ForceY:");
-  // NS_LOG_DEBUG(fy);
 
   NS_LOG_DEBUG("ATA_FORCE=" << Vector(fx,fy,0));
 
@@ -210,7 +197,7 @@ VirtualSprings2dMobilityModel::ComputeAtgForce()
     pos.z = 0;
 
     double dist = CalculateDistance(myPos, pos);
-    NS_LOG_DEBUG("atgNodePos=" << pos << " distace= " << dist);
+    //NS_LOG_DEBUG("atgNodePos=" << pos << " distace= " << dist);
 
     if (dist < m_rangeAtg)
     {   
@@ -260,7 +247,7 @@ VirtualSprings2dMobilityModel::GetMaxNodesNeighbours()
     }
   }
 
-  NS_LOG_DEBUG("Max nodes of neighbours = " << curMax);
+  //NS_LOG_DEBUG("Max nodes of neighbours = " << curMax);
 
   return curMax;
 }
@@ -273,11 +260,11 @@ VirtualSprings2dMobilityModel::ComputeKatg()
 
   if (!maxNodesNeighbours)
   {
-    NS_LOG_DEBUG("kAtg = 1" );
+    //NS_LOG_DEBUG("kAtg = 1" );
     return 1;
   }
 
-  NS_LOG_DEBUG("kAtg = " << coveredNodes/maxNodesNeighbours);
+  //NS_LOG_DEBUG("kAtg = " << coveredNodes/maxNodesNeighbours);
 
   return coveredNodes/maxNodesNeighbours;
 }
@@ -304,7 +291,7 @@ VirtualSprings2dMobilityModel::ComputeNumGroudNodes(Ptr<Node> node )
     }
   }
 
-  NS_LOG_DEBUG("Nodes covered=" << counter);
+  //NS_LOG_DEBUG("Nodes covered=" << counter);
 
   return counter;
 }
@@ -331,7 +318,7 @@ VirtualSprings2dMobilityModel::ComputeNumGroudNodes()
     }
   }
 
-  NS_LOG_DEBUG("Nodes covered=" << counter);
+  //NS_LOG_DEBUG("Nodes covered=" << counter);
 
   return counter;
 
