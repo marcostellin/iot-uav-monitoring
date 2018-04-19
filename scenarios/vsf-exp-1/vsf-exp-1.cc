@@ -48,12 +48,12 @@ std::string phyMode ("OfdmRate6Mbps");
 bool
 ReceiveFromLora (Ptr<NetDevice> loraNetDevice, Ptr<const Packet> packet, uint16_t protocol, const Address& sender)
 {
-  NS_LOG_UNCOND("ReceiveFromLora Callback!");
-  NS_LOG_UNCOND(Simulator::Now().GetSeconds());
+  NS_LOG_DEBUG("ReceiveFromLora Callback!");
+  NS_LOG_DEBUG(Simulator::Now().GetSeconds());
   
   Ptr<Node> node = loraNetDevice ->GetNode();
   Ptr<UdpRelay> relay = DynamicCast<UdpRelay>(node -> GetApplication(0));
-  NS_LOG_UNCOND(relay);
+
 
   relay -> Send();
 
@@ -69,14 +69,14 @@ main (int argc, char* argv[]){
   * LOGGING                    *
   *****************************/
 	//LogComponentEnable("UdpRelay", LOG_LEVEL_INFO);
-	LogComponentEnable("UdpServer", LOG_LEVEL_INFO);
+	//LogComponentEnable("UdpServer", LOG_LEVEL_INFO);
   //LogComponentEnable ("MobilityTest", LOG_LEVEL_INFO);
   //LogComponentEnable ("MobilityHelper", LOG_LEVEL_DEBUG);
   //LogComponentEnable ("EndDeviceLoraPhy", LOG_LEVEL_INFO);
   //LogComponentEnable ("GatewayLoraPhy", LOG_LEVEL_INFO);
   //LogComponentEnable ("GatewayLoraMac", LOG_LEVEL_INFO);
   //LogComponentEnable ("ConstantVelocityHelper", LOG_LEVEL_DEBUG);
-  //LogComponentEnable ("VirtualSprings2d", LOG_LEVEL_DEBUG);
+  LogComponentEnable ("VirtualSprings2d", LOG_LEVEL_DEBUG);
   //LogComponentEnable ("PropagationLossModel", LOG_LEVEL_DEBUG);
 
 	LogComponentEnableAll (LOG_PREFIX_FUNC);
@@ -134,61 +134,6 @@ main (int argc, char* argv[]){
   wifiMac.SetType ("ns3::AdhocWifiMac", "VhtSupported", BooleanValue(true));
 
 
-  /************************
-  *  Create UAVs          *
-  ************************/
-
-  NS_LOG_INFO ("Creating UAV devices...");
-
-  // Create a set of nodes
-  NodeContainer ataNodes;
-  ataNodes.Create (5);
-
-  //Assign mobility model to nodes
-
-  Ptr<ListPositionAllocator> nodesAllocator = CreateObject<ListPositionAllocator> ();
-  nodesAllocator->Add(Vector(200,200,100));
-  nodesAllocator->Add(Vector(100,100,100));
-  nodesAllocator->Add(Vector(200,100,100));
-  nodesAllocator->Add(Vector(100,200,100));
-
-  mobility.SetPositionAllocator (nodesAllocator);
-  mobility.SetMobilityModel ("ns3::VirtualSprings2dMobilityModel");
-  mobility.Install (ataNodes);
-  
-  // Setup Nodes in VSF mobility model
-  for (NodeContainer::Iterator j = ataNodes.Begin (); j != ataNodes.End (); ++j)
-  {
-    Ptr<Node> node = *j;
-    Ptr<VirtualSprings2dMobilityModel> model = node -> GetObject<VirtualSprings2dMobilityModel>();
-
-    for (NodeContainer::Iterator i = ataNodes.Begin (); i != ataNodes.End (); ++i)
-    {
-      Ptr<Node> nodeToAdd = *i;
-      if (nodeToAdd -> GetId() != node->GetId()){
-        model -> AddAtaNode(nodeToAdd->GetId());
-      }
-    }
-  }
-
-  phyHelper.SetDeviceType (LoraPhyHelper::GW);
-  macHelper.SetDeviceType (LoraMacHelper::GW);
-  helper.Install (phyHelper, macHelper, ataNodes);
-
-  /*******************
-  * Create BS        *
-  *******************/
-
-  NodeContainer bsNodes;
-  bsNodes.Create(1);
-
-  Ptr<ListPositionAllocator> bsAllocator = CreateObject<ListPositionAllocator>();
-  bsAllocator -> Add(Vector(200,200,0));
-
-  mobility.SetPositionAllocator(bsAllocator);
-  mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
-  mobility.Install(bsNodes);
-
   /*******************
   * Create EDs       *
   *******************/
@@ -212,6 +157,70 @@ main (int argc, char* argv[]){
   phyHelper.SetDeviceType (LoraPhyHelper::ED);
   macHelper.SetDeviceType (LoraMacHelper::ED);
   helper.Install (phyHelper, macHelper, endDevices);
+
+  /************************
+  *  Create UAVs          *
+  ************************/
+
+  NS_LOG_INFO ("Creating UAV devices...");
+
+  // Create a set of nodes
+  NodeContainer ataNodes;
+  ataNodes.Create (4);
+
+  //Assign mobility model to nodes
+
+  Ptr<ListPositionAllocator> nodesAllocator = CreateObject<ListPositionAllocator> ();
+  nodesAllocator->Add(Vector(200,300,100));
+  nodesAllocator->Add(Vector(100,100,100));
+  nodesAllocator->Add(Vector(200,100,100));
+  nodesAllocator->Add(Vector(100,200,100));
+
+  mobility.SetPositionAllocator (nodesAllocator);
+  mobility.SetMobilityModel ("ns3::VirtualSprings2dMobilityModel", 
+  																	"Time", TimeValue(Seconds(0.5)),
+  																	"Tolerance", DoubleValue(20.0));
+  mobility.Install (ataNodes);
+  
+  // Setup Nodes in VSF mobility model
+  for (NodeContainer::Iterator j = ataNodes.Begin (); j != ataNodes.End (); ++j)
+  {
+    Ptr<Node> node = *j;
+    Ptr<VirtualSprings2dMobilityModel> model = node -> GetObject<VirtualSprings2dMobilityModel>();
+
+    for (NodeContainer::Iterator i = ataNodes.Begin (); i != ataNodes.End (); ++i)
+    {
+      Ptr<Node> nodeToAdd = *i;
+      if (nodeToAdd -> GetId() != node->GetId()){
+        model -> AddAtaNode(nodeToAdd->GetId());
+      }
+    }
+
+    for (NodeContainer::Iterator i = endDevices.Begin (); i != endDevices.End (); ++i)
+    {
+      Ptr<Node> nodeToAdd = *i;
+      model -> AddAtgNode(nodeToAdd -> GetId());
+    }
+  }
+
+  phyHelper.SetDeviceType (LoraPhyHelper::GW);
+  macHelper.SetDeviceType (LoraMacHelper::GW);
+  helper.Install (phyHelper, macHelper, ataNodes);
+
+  /*******************
+  * Create BS        *
+  *******************/
+
+  NodeContainer bsNodes;
+  bsNodes.Create(1);
+
+  Ptr<ListPositionAllocator> bsAllocator = CreateObject<ListPositionAllocator>();
+  bsAllocator -> Add(Vector(200,200,0));
+
+  mobility.SetPositionAllocator(bsAllocator);
+  mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
+  mobility.Install(bsNodes);
+
 
   /*******************
   * Install devices **
@@ -295,8 +304,42 @@ main (int argc, char* argv[]){
   * RUN SIMULATION    *
   ********************/ 
 
-  Simulator::Stop (Seconds (1000));
-  AnimationInterface anim ("mobTest.xml");
+  Simulator::Stop (Seconds (100));
+  
+  /*******************
+  * Netanim config   *
+  *******************/
+
+  AnimationInterface anim ("uav-scenario.xml");
+
+  uint32_t edIcon = anim.AddResource("/home/letal32/workspace/ns-allinone-3.27/ns-3.27/images/fireman.png");
+  uint32_t uavIcon = anim.AddResource("/home/letal32/workspace/ns-allinone-3.27/ns-3.27/images/drone.png");
+  uint32_t bsIcon = anim.AddResource("/home/letal32/workspace/ns-allinone-3.27/ns-3.27/images/bs.png");
+
+  for (uint32_t i = 0; i < endDevices.GetN (); ++i)
+  {
+      anim.UpdateNodeDescription (endDevices.Get (i), "ED"); // Optional
+      anim.UpdateNodeColor (endDevices.Get (i), 255, 0, 0); // Optional
+      anim.UpdateNodeSize (endDevices.Get (i)-> GetId(), 50, 50);
+      anim.UpdateNodeImage (endDevices.Get (i)-> GetId(), edIcon);
+  }
+  for (uint32_t i = 0; i < bsNodes.GetN (); ++i)
+  {
+      anim.UpdateNodeDescription (bsNodes.Get (i), "BS"); // Optional
+      anim.UpdateNodeColor (bsNodes.Get (i), 0, 255, 0); // Optional
+      anim.UpdateNodeSize (bsNodes.Get (i)-> GetId(), 50, 50);
+      anim.UpdateNodeImage (bsNodes.Get (i)-> GetId(), bsIcon);
+  }
+  for (uint32_t i = 0; i < ataNodes.GetN (); ++i)
+  {
+      anim.UpdateNodeDescription (ataNodes.Get (i), "UAV"); // Optional
+      anim.UpdateNodeColor (ataNodes.Get (i), 0, 0, 255); // Optional
+      anim.UpdateNodeSize (ataNodes.Get (i) -> GetId(), 50, 50);
+      anim.UpdateNodeImage (ataNodes.Get (i)-> GetId(), uavIcon); 
+  }
+
+  anim.SetBackgroundImage("background.jpg", 0, 0, 0.5, 0.5, 0.8);
+
   Simulator::Run ();
 
   Simulator::Destroy ();
