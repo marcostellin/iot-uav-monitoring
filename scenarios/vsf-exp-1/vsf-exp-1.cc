@@ -39,14 +39,147 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("VsfExp1");
 
+std::string filename;
+
 std::string phyMode ("VhtMcs0");
-uint32_t numEds = 10;
+uint32_t numEds = 30;
 uint32_t numUavs = 4;
 
 
 /************************************
 * Callbacks                         *
 ************************************/
+
+// enum PacketOutcome {
+//   RECEIVED,
+//   INTERFERED,
+//   NO_MORE_RECEIVERS,
+//   UNDER_SENSITIVITY,
+//   UNSET
+// };
+
+struct PacketStatus {
+  Ptr<Packet const> packet;
+  uint32_t senderId;
+  bool recv;
+  //std::vector<enum PacketOutcome> outcomes;
+};
+
+struct EdStatus
+{
+	uint32_t nSent = 0;
+	uint32_t nRecv = 0;
+	uint32_t nInterf = 0;
+	uint32_t nNoRecvs = 0;
+	uint32_t nUnderSens = 0;
+};
+
+std::map<Ptr<Packet const>, PacketStatus> packetTracker;
+std::map<Ptr<Node>, EdStatus> edTracker;
+
+void
+TransmissionCallback (Ptr<Packet const> packet, uint32_t systemId)
+{
+  // NS_LOG_INFO ("Transmitted a packet from device " << systemId);
+  // Create a packetStatus
+  // PacketStatus status;
+  // status.packet = packet;
+  // status.senderId = systemId;
+  // status.outcomeNumber = 0;
+  // status.outcomes = std::vector<enum PacketOutcome> (numUavs, UNSET);
+
+  // packetTracker.insert (std::pair<Ptr<Packet const>, PacketStatus> (packet, status));
+	PacketStatus pStatus;
+	pStatus.packet = packet;
+	pStatus.senderId = systemId;
+	pStatus.recv = false;
+
+	packetTracker.insert (std::pair<Ptr<Packet const>, PacketStatus> (packet, pStatus));
+
+	std::map<Ptr<Node>, EdStatus>::iterator it = edTracker.find(NodeList::GetNode (systemId));
+
+	if ( it == edTracker.end () )
+	{
+		EdStatus status;
+		status.nSent += 1;
+
+  	edTracker.insert (std::pair<Ptr<Node>, EdStatus> (NodeList::GetNode (systemId), status ));
+
+  	return;
+	}
+
+  it -> second.nSent += 1;	
+
+}
+
+void
+PacketReceptionCallback (Ptr<Packet const> packet, uint32_t systemId)
+{
+  // Remove the successfully received packet from the list of sent ones
+  // NS_LOG_INFO ("A packet was successfully received at gateway " << systemId);
+
+  // std::map<Ptr<Packet const>, PacketStatus>::iterator it = packetTracker.find (packet);
+  // (*it).second.outcomes.at (systemId - numEds) = RECEIVED;
+  // (*it).second.outcomeNumber += 1;
+  std::map<Ptr<Packet const>, PacketStatus>::iterator itPacket = packetTracker.find (packet);
+
+  if (!(*itPacket).second.recv)
+  {
+  	std::map<Ptr<Node>, EdStatus>::iterator it = edTracker.find(NodeList::GetNode ( (*itPacket).second.senderId) );
+  	(*it).second.nRecv += 1;
+  	(*itPacket).second.recv = true;
+  }
+
+
+}
+
+void
+InterferenceCallback (Ptr<Packet const> packet, uint32_t systemId)
+{
+  // NS_LOG_INFO ("A packet was lost because of interference at gateway " << systemId);
+
+  // std::map<Ptr<Packet const>, PacketStatus>::iterator it = packetTracker.find (packet);
+  // (*it).second.outcomes.at (systemId - numEds) = INTERFERED;
+  // (*it).second.outcomeNumber += 1;
+  
+  std::map<Ptr<Packet const>, PacketStatus>::iterator itPacket = packetTracker.find (packet);
+  
+  std::map<Ptr<Node>, EdStatus>::iterator it = edTracker.find(NodeList::GetNode ( (*itPacket).second.senderId) );
+  (*it).second.nInterf += 1;
+
+}
+
+void
+NoMoreReceiversCallback (Ptr<Packet const> packet, uint32_t systemId)
+{
+  // NS_LOG_INFO ("A packet was lost because there were no more receivers at gateway " << systemId);
+
+  // std::map<Ptr<Packet const>, PacketStatus>::iterator it = packetTracker.find (packet);
+  // (*it).second.outcomes.at (systemId - numEds) = NO_MORE_RECEIVERS;
+  // (*it).second.outcomeNumber += 1;
+
+  std::map<Ptr<Packet const>, PacketStatus>::iterator itPacket = packetTracker.find (packet);
+
+  std::map<Ptr<Node>, EdStatus>::iterator it = edTracker.find(NodeList::GetNode ( (*itPacket).second.senderId) );
+  (*it).second.nNoRecvs += 1;
+
+}
+
+void
+UnderSensitivityCallback (Ptr<Packet const> packet, uint32_t systemId)
+{
+  // NS_LOG_INFO ("A packet arrived at the gateway under sensitivity at gateway " << systemId);
+
+  // std::map<Ptr<Packet const>, PacketStatus>::iterator it = packetTracker.find (packet);
+  // (*it).second.outcomes.at (systemId - numEds) = UNDER_SENSITIVITY;
+  // (*it).second.outcomeNumber += 1;
+
+  std::map<Ptr<Packet const>, PacketStatus>::iterator itPacket = packetTracker.find (packet);
+
+  std::map<Ptr<Node>, EdStatus>::iterator it = edTracker.find(NodeList::GetNode ( (*itPacket).second.senderId) );
+  (*it).second.nUnderSens += 1;
+
+}
 
 bool
 ReceiveFromLora (Ptr<NetDevice> loraNetDevice, Ptr<const Packet> packet, uint16_t protocol, const Address& sender)
@@ -85,6 +218,11 @@ main (int argc, char* argv[]){
 	LogComponentEnableAll (LOG_PREFIX_FUNC);
   LogComponentEnableAll (LOG_PREFIX_NODE);
   LogComponentEnableAll (LOG_PREFIX_TIME);
+
+  filename = "nodes-stats.out.txt";
+  std::ofstream out(filename);
+  std::streambuf *coutbuf = std::cout.rdbuf();
+  std::cout.rdbuf(out.rdbuf());
   
   /***********************
   * Set params           *
@@ -311,13 +449,49 @@ main (int argc, char* argv[]){
       sourceLoraNetDevice->SetReceiveCallback (MakeCallback(&ReceiveFromLora));
     } 
   }
+
+  /******************************
+  * Set LoRa callbacks          *
+  ******************************/
+  
+  for (NodeContainer::Iterator j = endDevices.Begin (); j != endDevices.End (); ++j)
+  {
+    Ptr<Node> node = *j;
+    Ptr<LoraNetDevice> loraNetDevice = node->GetDevice (0)->GetObject<LoraNetDevice> ();
+    Ptr<LoraPhy> phy = loraNetDevice->GetPhy ();
+    phy->TraceConnectWithoutContext ("StartSending",
+                                       MakeCallback (&TransmissionCallback));
+  }
+
+  for (NodeContainer::Iterator j = ataNodes.Begin (); j != ataNodes.End (); j++)
+  {
+
+    Ptr<Node> object = *j;
+
+    Ptr<NetDevice> netDevice = object->GetDevice (0);
+    Ptr<LoraNetDevice> loraNetDevice = netDevice->GetObject<LoraNetDevice> ();
+    NS_ASSERT (loraNetDevice != 0);
+    Ptr<GatewayLoraPhy> gwPhy = loraNetDevice->GetPhy ()->GetObject<GatewayLoraPhy> ();
+
+    // Global callbacks (every gateway)
+    gwPhy->TraceConnectWithoutContext ("ReceivedPacket",
+                                         MakeCallback (&PacketReceptionCallback));
+    gwPhy->TraceConnectWithoutContext ("LostPacketBecauseInterference",
+                                         MakeCallback (&InterferenceCallback));
+    gwPhy->TraceConnectWithoutContext ("LostPacketBecauseNoMoreReceivers",
+                                         MakeCallback (&NoMoreReceiversCallback));
+    gwPhy->TraceConnectWithoutContext ("LostPacketBecauseUnderSensitivity",
+                                         MakeCallback (&UnderSensitivityCallback));
+  }
+
+  macHelper.SetSpreadingFactorsUp (endDevices, ataNodes, channel);
   
    
   /********************
   * RUN SIMULATION    *
   ********************/ 
 
-  Simulator::Stop (Seconds (100));
+  Simulator::Stop (Seconds (1000));
   
   /*******************
   * Netanim config   *
@@ -356,6 +530,25 @@ main (int argc, char* argv[]){
   Simulator::Run ();
 
   Simulator::Destroy ();
+
+
+  /************************
+  * Save/Print Stats      *
+  ************************/
+  std::cout << "id,nSent,nRecv,nInterf,nNoRecvs,nUnderSens,PDR, avgDelayToGw, avgDelayToBs" << std::endl;
+
+  for (std::map<Ptr<Node>, EdStatus>::iterator it=edTracker.begin(); it!=edTracker.end(); ++it)
+  {
+    std::cout << it -> first -> GetId () << "," << 
+    						 it -> second.nSent  << "," <<  
+    						 it -> second.nRecv << "," <<
+    						 it -> second.nInterf << "," <<
+    						 it -> second.nNoRecvs << "," <<
+    						 it -> second.nUnderSens << std::endl;
+  }
+
+  std::cout.rdbuf(coutbuf);
+
   
 
   return 0;
