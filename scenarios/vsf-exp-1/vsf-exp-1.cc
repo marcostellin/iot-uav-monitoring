@@ -24,6 +24,7 @@
 #include "ns3/internet-module.h"
 #include "ns3/dsdv-module.h"
 #include "ns3/wifi-module.h"
+#include "ns3/packet-sink-helper.h"
 
 #include "ns3/udp-relay-server-helper.h"
 
@@ -38,7 +39,9 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("VsfExp1");
 
-std::string phyMode ("OfdmRate6Mbps");
+std::string phyMode ("VhtMcs0");
+uint32_t numEds = 10;
+uint32_t numUavs = 4;
 
 
 /************************************
@@ -76,13 +79,22 @@ main (int argc, char* argv[]){
   //LogComponentEnable ("GatewayLoraPhy", LOG_LEVEL_INFO);
   //LogComponentEnable ("GatewayLoraMac", LOG_LEVEL_INFO);
   //LogComponentEnable ("ConstantVelocityHelper", LOG_LEVEL_DEBUG);
-  LogComponentEnable ("VirtualSprings2d", LOG_LEVEL_DEBUG);
+  //LogComponentEnable ("VirtualSprings2d", LOG_LEVEL_DEBUG);
   //LogComponentEnable ("PropagationLossModel", LOG_LEVEL_DEBUG);
 
 	LogComponentEnableAll (LOG_PREFIX_FUNC);
   LogComponentEnableAll (LOG_PREFIX_NODE);
   LogComponentEnableAll (LOG_PREFIX_TIME);
   
+  /***********************
+  * Set params           *
+  ***********************/
+
+  CommandLine cmd;
+  cmd.AddValue ("NumED", "Number of end devices", numEds);
+  cmd.AddValue("NumUAVs", "Number of UAVs", numUavs);
+  cmd.Parse (argc, argv);
+
   /************************
   *  Create the channels  *
   ************************/
@@ -142,7 +154,7 @@ main (int argc, char* argv[]){
 
   // Create a set of nodes
   NodeContainer endDevices;
-  endDevices.Create (20);
+  endDevices.Create (numEds);
 
   // Assign a mobility model to the node
   Ptr<UniformDiscPositionAllocator> edsAllocator = CreateObject<UniformDiscPositionAllocator> ();
@@ -259,9 +271,10 @@ main (int argc, char* argv[]){
   Address serverAddress = Address(i.GetAddress(0));
   NS_LOG_INFO("Server Address:");
   NS_LOG_INFO(serverAddress);
+  
 
   uint16_t port = 4000;
-  UdpServerHelper server (port);
+  PacketSinkHelper server ("ns3::UdpSocketFactory", InetSocketAddress(i.GetAddress(0), port));
   ApplicationContainer apps = server.Install (bsNodes.Get (0));
   apps.Start (Seconds (1.0));
   apps.Stop (Minutes (10.0));
