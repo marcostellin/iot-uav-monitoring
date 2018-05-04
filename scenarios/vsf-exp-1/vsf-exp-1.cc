@@ -12,7 +12,11 @@
 #include "ns3/applications-module.h"
 #include "ns3/propagation-loss-model.h"
 #include "ns3/virtual-springs-2d-mobility-model.h"
-#include "ns3/alfa-friis-loss-model.h"
+#include "ns3/random-walk-2d-mobility-model.h"
+#include "ns3/hierarchical-mobility-model.h"
+#include "ns3/waypoint-mobility-model.h"
+#include "ns3/constant-position-mobility-model.h"
+//#include "ns3/alfa-friis-loss-model.h"
 
 #include "ns3/end-device-lora-phy.h"
 #include "ns3/gateway-lora-phy.h"
@@ -42,8 +46,10 @@ NS_LOG_COMPONENT_DEFINE("VsfExp1");
 std::string filename;
 
 std::string phyMode ("VhtMcs0");
-uint32_t numEds = 30;
+uint32_t numEds = 20;
 uint32_t numUavs = 4;
+
+//NodeContainer endDevices;
 
 
 /************************************
@@ -178,7 +184,7 @@ UnderSensitivityCallback (Ptr<Packet const> packet, uint32_t systemId)
 
   std::map<Ptr<Node>, EdStatus>::iterator it = edTracker.find(NodeList::GetNode ( (*itPacket).second.senderId) );
   (*it).second.nUnderSens += 1;
-
+ 
 }
 
 bool
@@ -194,6 +200,49 @@ ReceiveFromLora (Ptr<NetDevice> loraNetDevice, Ptr<const Packet> packet, uint16_
   relay -> Send();
 
   return true;
+}
+
+/******************************
+* General functions           *
+******************************/
+
+void
+changeMobilityModel (NodeContainer nodes)
+{
+	NS_LOG_UNCOND(Simulator::Now());
+	for (NodeContainer::Iterator j = nodes.Begin (); j != nodes.End (); ++j)
+  {
+    Ptr<Node> node = *j;
+    Ptr<HierarchicalMobilityModel> model = node -> GetObject<HierarchicalMobilityModel>();
+    Waypoint centerPos = DynamicCast<WaypointMobilityModel>(model -> GetChild()) -> GetNextWaypoint();
+    Ptr<RandomWalk2dMobilityModel> walkModel = CreateObjectWithAttributes<RandomWalk2dMobilityModel> (
+  																							"Bounds", RectangleValue(Rectangle(centerPos.position.x - 100, centerPos.position.x + 100, centerPos.position.y - 100, centerPos.position.y + 100)),
+  																							"Distance", DoubleValue(50),
+  																							"Speed", StringValue ("ns3::UniformRandomVariable[Min=2.0|Max=4.0]")
+  																						);
+
+    NS_LOG_UNCOND(Rectangle(centerPos.position.x - 100, centerPos.position.x + 100, centerPos.position.y - 100, centerPos.position.y + 100));
+    model -> SetChild(walkModel);
+
+  }
+}
+
+void
+changeMobilityModelAgain (NodeContainer nodes)
+{
+	for (NodeContainer::Iterator j = nodes.Begin (); j != nodes.End (); ++j)
+  {
+    Ptr<Node> node = *j;
+    Ptr<HierarchicalMobilityModel> model = node -> GetObject<HierarchicalMobilityModel>();
+    Ptr<WaypointMobilityModel> wpModel = CreateObjectWithAttributes<WaypointMobilityModel> (
+  	 																	  "InitialPositionIsWaypoint", BooleanValue(false)
+  	 																   );
+    wpModel -> AddWaypoint(Waypoint(Simulator::Now() + Seconds(2), model -> GetPosition()));
+    wpModel -> AddWaypoint(Waypoint(Simulator::Now() + Seconds(100), Vector(500,500,0)));	
+    // wpModel -> AddWaypoint(Waypoint(Seconds(400), Vector(250,250,0)));
+    model -> SetChild(wpModel);
+  }
+  Simulator::Schedule(Simulator::Now() + Seconds(110), &changeMobilityModel, nodes);
 }
 
 
@@ -296,13 +345,34 @@ main (int argc, char* argv[]){
 
   // Assign a mobility model to the node
   Ptr<UniformDiscPositionAllocator> edsAllocator = CreateObject<UniformDiscPositionAllocator> ();
-  edsAllocator->SetRho(200);
-  edsAllocator->SetX(200.0);
-  edsAllocator->SetY(200.0);
+  edsAllocator->SetRho(10);
+  edsAllocator->SetX(250.0);
+  edsAllocator->SetY(250.0);
+
+  //Create mobility model to waypoint
+  
+  Ptr<WaypointMobilityModel> wpModel = CreateObjectWithAttributes<WaypointMobilityModel> (
+  																			  "InitialPositionIsWaypoint", BooleanValue(true)
+  																		 );
 
   mobility.SetPositionAllocator (edsAllocator);
-  mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+  mobility.SetMobilityModel ("ns3::HierarchicalMobilityModel");
   mobility.Install (endDevices);
+
+  //wpModel -> AddWaypoint (Waypoint(Time("0s"), Vector(250,250,0)));
+  wpModel -> AddWaypoint (Waypoint(Time("100s"), Vector(500,500,0)));
+  wpModel -> AddWaypoint (Waypoint(Time("255s"), Vector(250,250,0)));
+  //changeMobilityModel(endDevices);
+  for (NodeContainer::Iterator j = endDevices.Begin (); j != endDevices.End (); ++j)
+  {
+    Ptr<Node> node = *j;
+    Ptr<HierarchicalMobilityModel> model = node -> GetObject<HierarchicalMobilityModel>();
+    Ptr<ConstantPositionMobilityModel> constModel = CreateObject<ConstantPositionMobilityModel> ();
+    model -> SetChild (constModel);
+    model -> SetPosition(edsAllocator -> GetNext());
+  }
+
+  Simulator::Schedule(Seconds(20), &changeMobilityModelAgain ,endDevices);
 
   phyHelper.SetDeviceType (LoraPhyHelper::ED);
   macHelper.SetDeviceType (LoraMacHelper::ED);
@@ -328,7 +398,7 @@ main (int argc, char* argv[]){
 
   mobility.SetPositionAllocator (nodesAllocator);
   mobility.SetMobilityModel ("ns3::VirtualSprings2dMobilityModel", 
-  																	"Time", TimeValue(Seconds(0.5)),
+  																	"Time", TimeValue(Seconds(1)),
   																	"Tolerance", DoubleValue(20.0));
   mobility.Install (ataNodes);
   
