@@ -13,7 +13,11 @@ The above mentioned parameters, once defined, will be used throughout the simula
 ## Propagation Model
 
 In presence of foliage in the path of the signal, the signal undergoes some additional attenuation that depends on the depth of the foliage. An appropriate path loss model must be chosen to take this effect into account.
-Multiple models have been proposed in the literature and they are generally divided into empirical models and analytical models. In general, empirical models are considered more reliable than analytical models. For the pupouse of this work, the work in [1] is considered. The authors compare the different propagation models and state that the most reliable in many different circumstances is the Modified Exponential Decay Model (MED) and gives the parameters for different forest scenarios. 
+Multiple models have been proposed in the literature and they are generally divided into empirical models and analytical models. In general, empirical models are considered more reliable than analytical models. 
+
+### Modified Exponential Decay
+
+For the purpose of this work, the work in [1] is considered. The authors compare the different propagation models and state that the most reliable in many different circumstances is the Modified Exponential Decay Model (MED) and gives the parameters for different forest scenarios. 
 The MED model is as follows:
 
 ![img](http://latex.codecogs.com/svg.latex?PL%3DXf%5EYd%5EZ)
@@ -24,15 +28,24 @@ This model needs to be combined with a suited propagation model when the signal 
 
 For the communication between the UAVs a Friis model is also considered since no obstacles are present between the UAVs.
 
+### Alfa-Friis
+
 The model described in [4] is also considered as an alternative model. The model is a variation of the Friis model where the distance is elevated to a parameter alfa determined experimentally.
 
 ![img](http://ieeexplore.ieee.org/mediastore/IEEE/content/media/6916489/6927672/6927707/6927707-table-4-small.gif)
 
 The average alfa is 3.29.
 
-In order to determine the more realistic model, a series of experiments will be conducted.
+### LoRa Propagation Experiments Findings
 
-[EDIT: 27/02/2018] In order to account for different conditions of the foliage and other random variation in the environment, the alpha may be randomly selected (with distribution to be chosen) among the minimum and maximum value in the table each time a packet is sent. 
+According to [5]:
+
+* __Foliage__: the attenuation caused by thick foliage is substantial in LoRa and reduces the range of an order of magnitude (from approx. 500m to 50-90m using BW 500MHz and SF 6)
+* __Transmission Power:__ not important in terms of range
+* __Bandwidth__: from 500 MHz to 125 MHz the range almost double
+* __SF__: from 6 to 8 almost double the range
+* __Temperature__: at 36° the range drops by half with respect to measurements performed in scenario described in Foliage
+* __Consistency of Received signal__: in forest environment almost the same in all directions
 
 ## Average Trees height
 
@@ -63,3 +76,5 @@ Given the above information, we can assume two different scenarios. A more signi
 [[3]](http://journals.openedition.org/mediterranee/6863) Leite, Flora & Lourenço, Luciano & Bento-Gonçalves, António. (2013). Large forest fires in mainland Portugal, brief characterization. Méditerranée. 121. 53-66. 10.4000/mediterranee.6863.
 
 [[4]](http://ieeexplore.ieee.org/document/6927707/) S. Jiang, C. Portillo-Quintero, A. Sanchez-Azofeifa and M. H. MacGregor, "Predicting RF path loss in forests using satellite measurements of vegetation indices," 39th Annual IEEE Conference on Local Computer Networks Workshops, Edmonton, AB, 2014, pp. 592-596.
+
+\[[5](https://pdfs.semanticscholar.org/9027/ad3f2b4aba423fb8a1d095a4e3d9c0886dd2.pdf)\] LoRa from the City to the Mountains: Exploration of Hardware and Environmental Factors
