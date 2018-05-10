@@ -81,6 +81,7 @@ struct EdStatus
 };
 
 std::map<Ptr<Packet const>, PacketStatus> packetTracker;
+std::map<uint64_t, PacketStatus> packetRelayedTracker;
 std::map<Ptr<Node>, EdStatus> edTracker;
 
 void
@@ -195,11 +196,28 @@ ReceiveFromLora (Ptr<NetDevice> loraNetDevice, Ptr<const Packet> packet, uint16_
   
   Ptr<Node> node = loraNetDevice ->GetNode();
   Ptr<UdpRelay> relay = DynamicCast<UdpRelay>(node -> GetApplication(0));
+  Ptr<Packet> relayedPkt = packet -> Copy();
 
+  NS_LOG_DEBUG ("Original Packet UID " << packet -> GetUid ());
+  NS_LOG_DEBUG ("Copied Packet UID " << relayedPkt -> GetUid ());
 
-  relay -> Send();
+  PacketStatus status;
+  status.packet = packet;
+  status.recv = false;
+
+  packetRelayedTracker.insert (std::pair<uint64_t, PacketStatus> (packet -> GetUid (), status));
+
+  relay -> Send(relayedPkt);
 
   return true;
+}
+
+void
+ReceiveFromBs(Ptr<const Packet> packet, const Address &addr)
+{
+  //NS_LOG_UNCOND("TestRx");
+  std::map<uint64_t, PacketStatus>::iterator it = packetRelayedTracker.find (packet -> GetUid ());
+  (*it).second.recv = true;
 }
 
 /******************************
@@ -261,7 +279,7 @@ main (int argc, char* argv[]){
   //LogComponentEnable ("GatewayLoraPhy", LOG_LEVEL_INFO);
   //LogComponentEnable ("GatewayLoraMac", LOG_LEVEL_INFO);
   //LogComponentEnable ("ConstantVelocityHelper", LOG_LEVEL_DEBUG);
-  LogComponentEnable ("VirtualSprings2d", LOG_LEVEL_DEBUG);
+  //LogComponentEnable ("VirtualSprings2d", LOG_LEVEL_DEBUG);
   //LogComponentEnable ("PropagationLossModel", LOG_LEVEL_DEBUG);
 
 	LogComponentEnableAll (LOG_PREFIX_FUNC);
@@ -486,6 +504,8 @@ main (int argc, char* argv[]){
   uint16_t port = 4000;
   PacketSinkHelper server ("ns3::UdpSocketFactory", InetSocketAddress(i.GetAddress(0), port));
   ApplicationContainer apps = server.Install (bsNodes.Get (0));
+  Ptr<PacketSink> sink = DynamicCast<PacketSink> (apps.Get (0));
+  sink -> TraceConnectWithoutContext ("Rx", MakeCallback(&ReceiveFromBs));
   apps.Start (Seconds (1.0));
   apps.Stop (Minutes (10.0));
 
@@ -618,6 +638,21 @@ main (int argc, char* argv[]){
     						 it -> second.nNoRecvs << "," <<
     						 it -> second.nUnderSens << std::endl;
   }
+
+  std::cout << "BsTot, BsRecv, BsNotRecv" << std::endl;
+
+  int nBsRecv = 0;
+  int nBsNotRecv = 0;
+  for (std::map<uint64_t, PacketStatus>::iterator it=packetRelayedTracker.begin(); it!=packetRelayedTracker.end(); ++it)
+  {
+    //NS_LOG_UNCOND("iteration");
+    if (it -> second.recv)
+      nBsRecv++;
+    else
+      nBsNotRecv++;
+  }
+
+  std::cout << nBsRecv + nBsNotRecv << "," << nBsRecv << "," << nBsNotRecv << std::endl;
 
   std::cout.rdbuf(coutbuf);
 

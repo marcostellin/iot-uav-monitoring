@@ -68,7 +68,7 @@ public:
   /**
    * \brief Send a packet
    */
-  void Send (void);
+  void Send (Ptr<Packet> p);
 
 protected:
   virtual void DoDispose (void);
