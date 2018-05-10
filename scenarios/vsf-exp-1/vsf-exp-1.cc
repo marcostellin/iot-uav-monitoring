@@ -209,7 +209,7 @@ ReceiveFromLora (Ptr<NetDevice> loraNetDevice, Ptr<const Packet> packet, uint16_
 void
 changeMobilityModel (NodeContainer nodes)
 {
-	NS_LOG_UNCOND(Simulator::Now());
+	//NS_LOG_UNCOND(Simulator::Now());
 	for (NodeContainer::Iterator j = nodes.Begin (); j != nodes.End (); ++j)
   {
     Ptr<Node> node = *j;
@@ -221,7 +221,7 @@ changeMobilityModel (NodeContainer nodes)
   																							"Speed", StringValue ("ns3::UniformRandomVariable[Min=2.0|Max=4.0]")
   																						);
 
-    NS_LOG_UNCOND(Rectangle(centerPos.position.x - 100, centerPos.position.x + 100, centerPos.position.y - 100, centerPos.position.y + 100));
+    //NS_LOG_UNCOND(Rectangle(centerPos.position.x - 100, centerPos.position.x + 100, centerPos.position.y - 100, centerPos.position.y + 100));
     model -> SetChild(walkModel);
 
   }
@@ -261,7 +261,7 @@ main (int argc, char* argv[]){
   //LogComponentEnable ("GatewayLoraPhy", LOG_LEVEL_INFO);
   //LogComponentEnable ("GatewayLoraMac", LOG_LEVEL_INFO);
   //LogComponentEnable ("ConstantVelocityHelper", LOG_LEVEL_DEBUG);
-  //LogComponentEnable ("VirtualSprings2d", LOG_LEVEL_DEBUG);
+  LogComponentEnable ("VirtualSprings2d", LOG_LEVEL_DEBUG);
   //LogComponentEnable ("PropagationLossModel", LOG_LEVEL_DEBUG);
 
 	LogComponentEnableAll (LOG_PREFIX_FUNC);
@@ -388,6 +388,7 @@ main (int argc, char* argv[]){
   NodeContainer ataNodes;
   ataNodes.Create (4);
 
+  Vector bsPos = Vector(200,200,0);
   //Assign mobility model to nodes
 
   Ptr<ListPositionAllocator> nodesAllocator = CreateObject<ListPositionAllocator> ();
@@ -399,7 +400,8 @@ main (int argc, char* argv[]){
   mobility.SetPositionAllocator (nodesAllocator);
   mobility.SetMobilityModel ("ns3::VirtualSprings2dMobilityModel", 
   																	"Time", TimeValue(Seconds(1)),
-  																	"Tolerance", DoubleValue(20.0));
+  																	"Tolerance", DoubleValue(20.0),
+                                    "BsPosition", VectorValue(bsPos));
   mobility.Install (ataNodes);
   
   // Setup Nodes in VSF mobility model
@@ -435,7 +437,7 @@ main (int argc, char* argv[]){
   bsNodes.Create(1);
 
   Ptr<ListPositionAllocator> bsAllocator = CreateObject<ListPositionAllocator>();
-  bsAllocator -> Add(Vector(200,200,0));
+  bsAllocator -> Add(bsPos);
 
   mobility.SetPositionAllocator(bsAllocator);
   mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
