@@ -80,6 +80,7 @@ private:
   double ComputeKatg(void);
   int ComputeNumGroudNodes(Ptr<Node> node);
   int ComputeNumGroudNodes(void);
+  bool HasPathToBs (Vector myPos);
 
 
   virtual void DoDispose (void);
@@ -91,6 +92,7 @@ private:
   ConstantVelocityHelper m_helper; //!< helper for this object
   EventId m_event; //!< stored event ID 
   Time m_modeTime; //!< Change current direction and speed after this delay
+  Vector m_bsPos;
   double m_speed; //!< Speed of aerial nodes
   double m_kAta; //<! stifness of aerial springs
   double m_rangeAta; //<! tx range of AtA communications
