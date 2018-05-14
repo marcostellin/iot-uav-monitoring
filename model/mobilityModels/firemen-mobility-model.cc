@@ -141,6 +141,8 @@ FiremenMobilityModel::DoInitializePrivate (void)
   double xUpRight = xLowLeft + lengthSubArea;
   double yUpRight = yLowLeft + m_heightWpArea;
 
+  NS_LOG_DEBUG ("Assigned Area team " << m_teamId << " " << Rectangle(xLowLeft, xUpRight, yLowLeft, yUpRight));
+
   Vector waypoint;
 
   m_wp -> SetAttribute ("Min", DoubleValue(xLowLeft));
@@ -153,7 +155,7 @@ FiremenMobilityModel::DoInitializePrivate (void)
 
   waypoint.y = m_wp -> GetValue ();
 
-  NS_LOG_DEBUG ("Current waypoint = " << waypoint);
+  //NS_LOG_DEBUG ("Current waypoint = " << waypoint);
 
   //Define bounds for random walk area
   m_bounds = Rectangle (waypoint.x - m_spreadX/2, 
@@ -168,7 +170,7 @@ FiremenMobilityModel::DoInitializePrivate (void)
                         speed * (waypoint.y - pos.y) / dist,
                         0.0);
   
-  NS_LOG_DEBUG ("Velocity = " << vel);
+  //NS_LOG_DEBUG ("Velocity = " << vel);
 
   m_helper.SetVelocity (vel);
   m_helper.Unpause ();
@@ -251,7 +253,7 @@ FiremenMobilityModel::DoInitializePrivateRandomWalk (void)
   m_helper.SetVelocity (vector);
   m_helper.Unpause ();
 
-  NS_LOG_DEBUG ("Time passed " << m_cur.GetSeconds());
+  //NS_LOG_DEBUG ("Time passed " << m_cur.GetSeconds());
 
   if (m_cur > m_fallTime)
   {
@@ -280,8 +282,8 @@ FiremenMobilityModel::DoWalkRandom (Time delayLeft)
   
   m_event.Cancel ();
 
-  NS_LOG_DEBUG ("Bounds " << m_bounds);
-  NS_LOG_DEBUG ("Next Position " << nextPosition);
+  //NS_LOG_DEBUG ("Bounds " << m_bounds);
+  //NS_LOG_DEBUG ("Next Position " << nextPosition);
 
   if (m_bounds.IsInside (nextPosition))
   {
