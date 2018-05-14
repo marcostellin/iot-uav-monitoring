@@ -72,6 +72,24 @@ FiremenMobilityModel::GetTypeId (void)
                    MakePointerAccessor (&FiremenMobilityModel::m_wp),
                    MakePointerChecker<RandomVariableStream> ())
 
+    .AddAttribute ("WalkTime",
+                   "Time before changing direction when random walk",
+                   TimeValue (Seconds(30)),
+                   MakeTimeAccessor (&FiremenMobilityModel::m_walkTime),
+                   MakeTimeChecker ())
+
+    .AddAttribute ("SpreadY",
+                   "Maximum spread of team in y direction (meters)",
+                   DoubleValue (300),
+                   MakeDoubleAccessor (&FiremenMobilityModel::m_spreadY),
+                   MakeDoubleChecker<double> ())
+
+    .AddAttribute ("SpreadX",
+                   "Maximum spread of team in x direction (meters)",
+                   DoubleValue (300),
+                   MakeDoubleAccessor (&FiremenMobilityModel::m_spreadX),
+                   MakeDoubleChecker<double> ())
+
     .AddAttribute ("Speed",
                    "The speed of the firemen",
                    DoubleValue (1.39),
@@ -86,6 +104,10 @@ FiremenMobilityModel::DoInitialize (void)
 {
   m_minY = m_area.yMax;
   m_wp -> SetStream (m_teamId);
+
+  m_direction = CreateObject<UniformRandomVariable> ();
+  m_direction -> SetAttribute ("Min", DoubleValue(0));
+  m_direction -> SetAttribute ("Max", DoubleValue(6.283184));
 
   DoInitializePrivate ();
   MobilityModel::DoInitialize ();
@@ -126,6 +148,12 @@ FiremenMobilityModel::DoInitializePrivate (void)
 
   NS_LOG_DEBUG ("Current waypoint = " << waypoint);
 
+  //Define bounds for random walk area
+  m_bounds = Rectangle (waypoint.x - m_spreadX/2, 
+                        waypoint.x + m_spreadX/2, 
+                        waypoint.y - m_spreadY/2, 
+                        waypoint.y + m_spreadY/2);
+
   Vector pos = m_helper.GetCurrentPosition ();
   double dist = CalculateDistance (waypoint, pos);
   NS_ASSERT (pos.z == 0);
@@ -150,7 +178,7 @@ FiremenMobilityModel::DoWalk (Time delayLeft)
 {
   m_event.Cancel ();
 
-  m_event = Simulator::Schedule (delayLeft, &FiremenMobilityModel::DoInitializePrivate, this);
+  m_event = Simulator::Schedule (delayLeft, &FiremenMobilityModel::DoInitializePrivateRandomWalk, this);
 
   NotifyCourseChange ();
 
@@ -201,6 +229,78 @@ FiremenMobilityModel::Rebound (Time delayLeft)
 }
 
 */
+
+void 
+FiremenMobilityModel::DoInitializePrivateRandomWalk (void) 
+{
+  m_helper.Update ();
+  double speed = m_speed;
+  double direction = m_direction -> GetValue();
+
+  Vector vector (std::cos (direction) * speed,
+                 std::sin (direction) * speed,
+                 0.0);
+
+  m_helper.SetVelocity (vector);
+  m_helper.Unpause ();
+
+  Time delayLeft = m_walkTime;
+
+  DoWalkRandom (delayLeft);
+}
+
+void
+FiremenMobilityModel::DoWalkRandom (Time delayLeft)
+{
+  Vector position = m_helper.GetCurrentPosition ();
+  Vector speed = m_helper.GetVelocity ();
+  Vector nextPosition = position;
+  nextPosition.x += speed.x * delayLeft.GetSeconds ();
+  nextPosition.y += speed.y * delayLeft.GetSeconds ();
+  
+  m_event.Cancel ();
+
+  NS_LOG_DEBUG ("Bounds " << m_bounds);
+  NS_LOG_DEBUG ("Next Position " << nextPosition);
+
+  if (m_bounds.IsInside (nextPosition))
+  {
+    m_event = Simulator::Schedule (delayLeft, &FiremenMobilityModel::DoInitializePrivateRandomWalk, this);
+  }
+  else
+  {
+    nextPosition = m_bounds.CalculateIntersection (position, speed);
+    Time delay = Seconds ((nextPosition.x - position.x) / speed.x);
+    m_event = Simulator::Schedule (delay, &FiremenMobilityModel::Rebound, this, delayLeft - delay);
+  }
+  
+  NotifyCourseChange ();
+}
+
+void
+FiremenMobilityModel::Rebound (Time delayLeft)
+{
+  m_helper.UpdateWithBounds (m_bounds);
+  Vector position = m_helper.GetCurrentPosition ();
+  Vector speed = m_helper.GetVelocity ();
+
+  switch (m_bounds.GetClosestSide (position))
+  {
+    case Rectangle::RIGHT:
+    case Rectangle::LEFT:
+      speed.x = -speed.x;
+      break;
+
+    case Rectangle::TOP:
+    case Rectangle::BOTTOM:
+      speed.y = -speed.y;
+      break;
+  }
+  
+  m_helper.SetVelocity (speed);
+  m_helper.Unpause ();
+  DoWalkRandom (delayLeft);
+}
 
 void
 FiremenMobilityModel::DoDispose (void)

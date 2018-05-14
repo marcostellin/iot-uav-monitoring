@@ -65,10 +65,12 @@ private:
    * time is reached, or intersection with the bounding box
    */
   void DoWalk (Time timeLeft);
+  void DoWalkRandom (Time timeLeft);
   /**
    * Perform initialization of the object before MobilityModel::DoInitialize ()
    */
   void DoInitializePrivate (void);
+  void DoInitializePrivateRandomWalk (void);
 
 
   virtual void DoDispose (void);
@@ -84,9 +86,14 @@ private:
   int m_numTeams;
   int m_teamId;
   Ptr<RandomVariableStream> m_wp;
+  Ptr<RandomVariableStream> m_direction;
   double m_minY;
   double m_heightWpArea;
+  double m_spreadX;
+  double m_spreadY;
   Rectangle m_area; //! < Area in which fire is spreading
+  Rectangle m_bounds; //! < Area in which random walk is happening
+  Time m_walkTime;
   
 };
 
