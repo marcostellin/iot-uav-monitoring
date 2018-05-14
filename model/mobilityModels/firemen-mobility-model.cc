@@ -78,6 +78,12 @@ FiremenMobilityModel::GetTypeId (void)
                    MakeTimeAccessor (&FiremenMobilityModel::m_walkTime),
                    MakeTimeChecker ())
 
+    .AddAttribute ("FallbackTime",
+                   "Time before falling back to another point of intervention",
+                   TimeValue (Minutes(5)),
+                   MakeTimeAccessor (&FiremenMobilityModel::m_fallTime),
+                   MakeTimeChecker ())
+
     .AddAttribute ("SpreadY",
                    "Maximum spread of team in y direction (meters)",
                    DoubleValue (300),
@@ -104,6 +110,7 @@ FiremenMobilityModel::DoInitialize (void)
 {
   m_minY = m_area.yMax;
   m_wp -> SetStream (m_teamId);
+  m_cur = Seconds (0);
 
   m_direction = CreateObject<UniformRandomVariable> ();
   m_direction -> SetAttribute ("Min", DoubleValue(0));
@@ -244,9 +251,22 @@ FiremenMobilityModel::DoInitializePrivateRandomWalk (void)
   m_helper.SetVelocity (vector);
   m_helper.Unpause ();
 
-  Time delayLeft = m_walkTime;
+  NS_LOG_DEBUG ("Time passed " << m_cur.GetSeconds());
 
-  DoWalkRandom (delayLeft);
+  if (m_cur > m_fallTime)
+  {
+    m_event.Cancel ();
+    m_cur = Seconds (0);
+    m_event = Simulator::ScheduleNow (&FiremenMobilityModel::DoInitializePrivate, this);
+  }
+  else
+  {
+    m_cur += m_walkTime;
+
+    Time delayLeft = m_walkTime;
+
+    DoWalkRandom (delayLeft);
+  }
 }
 
 void

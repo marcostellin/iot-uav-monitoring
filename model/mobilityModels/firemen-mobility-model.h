@@ -94,6 +94,8 @@ private:
   Rectangle m_area; //! < Area in which fire is spreading
   Rectangle m_bounds; //! < Area in which random walk is happening
   Time m_walkTime;
+  Time m_fallTime;
+  Time m_cur;
   
 };
 
