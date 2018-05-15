@@ -46,7 +46,7 @@ NS_LOG_COMPONENT_DEFINE("VsfExp1");
 
 std::string filename;
 
-std::string phyMode ("VhtMcs0");
+std::string phyMode ("ErpOfdmRate12Mbps");
 uint32_t numTeams = 3;
 uint32_t numUavs = 4;
 
@@ -260,6 +260,18 @@ main (int argc, char* argv[]){
   cmd.Parse (argc, argv);
 
   /************************
+  * Config Defaults       *
+  ************************/
+
+  // disable fragmentation for frames below 2200 bytes
+  Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("2200"));
+  // turn off RTS/CTS for frames below 2200 bytes
+  Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("2200"));
+  // Fix non-unicast data rate to be the same as that of unicast
+  Config::SetDefault ("ns3::WifiRemoteStationManager::NonUnicastMode",
+                      StringValue (phyMode));
+
+  /************************
   *  Create the channels  *
   ************************/
 
@@ -292,22 +304,24 @@ main (int argc, char* argv[]){
   LoraHelper helper = LoraHelper ();
 
   YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
+  wifiPhy.Set ("RxGain", DoubleValue (-10));
   YansWifiChannelHelper wifiChannel;
   wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
-  wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue(5.0e+09));
+  wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue(2.4e+09));
   wifiPhy.SetChannel (wifiChannel.Create ());
 
   // Add an upper mac and disable rate control
   WifiMacHelper wifiMac;
   WifiHelper wifi;
 
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211ac);
+  wifi.SetStandard (WIFI_PHY_STANDARD_80211g);
   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
                                 "DataMode",StringValue (phyMode),
                                 "ControlMode",StringValue (phyMode));
 
   // Set it to adhoc mode
-  wifiMac.SetType ("ns3::AdhocWifiMac", "VhtSupported", BooleanValue(true));
+  wifiMac.SetType ("ns3::AdhocWifiMac");
+  //wifiMac.SetType ("ns3::AdhocWifiMac", "VhtSupported", BooleanValue(true));
 
 
   /*******************
@@ -452,7 +466,9 @@ main (int argc, char* argv[]){
   mobility.SetMobilityModel ("ns3::VirtualSprings2dMobilityModel", 
   																	"Time", TimeValue(Seconds(1)),
   																	"Tolerance", DoubleValue(20.0),
-                                    "BsPosition", VectorValue(bsPos));
+                                    "BsPosition", VectorValue(bsPos),
+                                    "TxRangeAta", DoubleValue(500),
+                                    "l0Ata", DoubleValue(250));
   mobility.Install (ataNodes);
   
   // Setup Nodes in VSF mobility model
