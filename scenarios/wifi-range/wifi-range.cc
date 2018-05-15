@@ -29,8 +29,27 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("WifiRange");
 
-std::string phyMode = "OfdmRate24Mbps";
-double dist = 100;
+std::string phyMode = "DsssRate1Mbps";
+double dist = 200;
+bool inRange = false;
+int nRecv = 0;
+std::string filename;
+
+bool fexists(const std::string& filename) {
+  std::ifstream ifile(filename.c_str());
+  return (bool)ifile;
+}
+
+void
+RxPacket(Ptr<Packet const> packet, const Address &addr)
+{
+	NS_LOG_INFO("In Range");
+	if (!inRange){
+		inRange = !inRange;
+	}
+
+  nRecv ++;
+}
 
 int
 main (int argc, char* argv[]){
@@ -39,7 +58,7 @@ main (int argc, char* argv[]){
   * LOGGING                    *
   *****************************/
 	//LogComponentEnable("UdpClient", LOG_LEVEL_INFO);
-	LogComponentEnable("PacketSink", LOG_LEVEL_INFO);
+	//LogComponentEnable("PacketSink", LOG_LEVEL_INFO);
 	//LogComponentEnable("UdpServer", LOG_LEVEL_INFO);
   //LogComponentEnable ("MobilityTest", LOG_LEVEL_INFO);
   //LogComponentEnable ("MobilityHelper", LOG_LEVEL_DEBUG);
@@ -49,10 +68,22 @@ main (int argc, char* argv[]){
   //LogComponentEnable ("ConstantVelocityHelper", LOG_LEVEL_DEBUG);
   //LogComponentEnable ("VirtualSprings2d", LOG_LEVEL_DEBUG);
   //LogComponentEnable ("PropagationLossModel", LOG_LEVEL_DEBUG);
+  //LogComponentEnable ("WifiPhy", LOG_LEVEL_DEBUG);
 
 	LogComponentEnableAll (LOG_PREFIX_FUNC);
   LogComponentEnableAll (LOG_PREFIX_NODE);
   LogComponentEnableAll (LOG_PREFIX_TIME);
+
+  // disable fragmentation for frames below 2200 bytes
+  Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("2200"));
+  // turn off RTS/CTS for frames below 2200 bytes
+  Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("2200"));
+  // Fix non-unicast data rate to be the same as that of unicast
+  Config::SetDefault ("ns3::WifiRemoteStationManager::NonUnicastMode",
+                      StringValue (phyMode));
+
+  Config::SetDefault ("ns3::WifiPhy::RxGain", DoubleValue (-10));
+  Config::SetDefault ("ns3::WifiPhy::TxGain", DoubleValue (0));
 
   /***********************
   * Set params           *
@@ -60,33 +91,55 @@ main (int argc, char* argv[]){
 
   CommandLine cmd;
   cmd.AddValue ("Distance", "Distance of nodes", dist);
+  cmd.AddValue("DataMode", "Mode Used", phyMode);
   cmd.Parse (argc, argv);
+
+
+  /***********************
+  * Print shit           *
+  ***********************/
+  filename = "wifiRange.out.txt"; 
+  bool isFileExistent = fexists(filename);
+  std::ofstream out(filename, std::ios_base::app);
+  std::streambuf *coutbuf = std::cout.rdbuf();
+  std::cout.rdbuf(out.rdbuf());
 
   /************************
   *  Create the helpers  *
   ************************/
+  // Config::SetDefault("ns3::WifiPhy::TxPowerEnd", DoubleValue(14));
+  // Config::SetDefault("ns3::WifiPhy::TxPowerStart", DoubleValue(14));
+  // Config::SetDefault("ns3::WifiPhy::EnergyDetectionThreshold", DoubleValue(-81));
+  // Config::SetDefault("ns3::WifiPhy::ConCcaMode1Threshold", DoubleValue(-84));
+  
 
   NS_LOG_INFO ("Setting up helpers...");
 
   MobilityHelper mobility;
 
   YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
+  // wifiPhy.Set ("RxGain", DoubleValue (-10) );
+  // wifiPhy.Set ("TxGain", DoubleValue (-10));
   YansWifiChannelHelper wifiChannel;
   wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
-  wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue(5.0e+09));
+  wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue(2.4e+09));
+  //wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel");
+  //wifiChannel.AddPropagationLoss ("ns3::LogDistancePropagationLossModel", "Exponent", DoubleValue(2.04));
   wifiPhy.SetChannel (wifiChannel.Create ());
 
   // Add an upper mac and disable rate control
   WifiMacHelper wifiMac;
   WifiHelper wifi;
 
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211ac);
+  //wifi.SetStandard (WIFI_PHY_STANDARD_80211ac);
+  wifi.SetStandard(WIFI_PHY_STANDARD_80211g);
   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
                                 "DataMode",StringValue (phyMode),
                                 "ControlMode",StringValue (phyMode));
 
   // Set it to adhoc mode
-  wifiMac.SetType ("ns3::AdhocWifiMac", "VhtSupported", BooleanValue(true));
+  //wifiMac.SetType ("ns3::AdhocWifiMac", "VhtSupported", BooleanValue(true));
+  wifiMac.SetType ("ns3::AdhocWifiMac");
 
   /**********************
   * Create the nodes *
@@ -108,11 +161,25 @@ main (int argc, char* argv[]){
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
   mobility.Install (nodes);
 
+  NodeContainer otherNodes;
+  otherNodes.Create (4);
+  Ptr<UniformDiscPositionAllocator> otherAlloc = CreateObject<UniformDiscPositionAllocator> ();
+  otherAlloc -> SetRho (100);
+
+  mobility.SetPositionAllocator (otherAlloc);
+  mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+  mobility.Install (otherNodes);
+
+  NodeContainer allNodes;
+  allNodes.Add (nodes);
+  allNodes.Add (otherNodes);
+
+
   /*******************
   * Install devices **
   *******************/
 
-  NetDeviceContainer wifiDevices = wifi.Install (wifiPhy, wifiMac, nodes);
+  NetDeviceContainer wifiDevices = wifi.Install (wifiPhy, wifiMac, allNodes);
 
 
   /************************
@@ -123,7 +190,7 @@ main (int argc, char* argv[]){
   //OlsrHelper aodv;
   InternetStackHelper stack;
   stack.SetRoutingHelper (dsdv);
-  stack.Install (nodes);
+  stack.Install (allNodes);
   
 
   /*************************
@@ -148,8 +215,11 @@ main (int argc, char* argv[]){
   apps.Start (Seconds (1.0));
   apps.Stop (Minutes (10.0));
 
+  Ptr<PacketSink> sink = DynamicCast<PacketSink>(apps.Get(0));
+  sink -> TraceConnectWithoutContext("Rx", MakeCallback(&RxPacket));
+
   uint32_t MaxPacketSize = 1024;
-  uint32_t maxPacketCount = 320;
+  uint32_t maxPacketCount = 100;
   UdpClientHelper client (Address(serverAddress), port);
   client.SetAttribute ("MaxPackets", UintegerValue (maxPacketCount));
   client.SetAttribute ("PacketSize", UintegerValue (MaxPacketSize));
@@ -157,6 +227,9 @@ main (int argc, char* argv[]){
   apps.Start (Seconds (2.0));
   apps.Stop (Minutes (10.0));
 
+  apps = client.Install (otherNodes);
+  apps.Start (Seconds (2.0));
+  apps.Stop (Minutes (10.0));
 
   /********************
   * RUN SIMULATION    *
@@ -166,6 +239,13 @@ main (int argc, char* argv[]){
   Simulator::Run ();
 
   Simulator::Destroy ();
+
+  if (!isFileExistent){    
+      //std::cout << "SF\tnNodes\nGateways\ttInterval\tPDR\tnUnderSens\tnInterf\tnNoRecv" << std::endl;
+      std::cout << "DataMode,Dist,InRange" << std::endl;
+  }
   
+  std::cout << phyMode << "," << std::to_string(dist) << "," << std::to_string(inRange) << "," << nRecv << std::endl;
+  std::cout.rdbuf(coutbuf);
 
 }
