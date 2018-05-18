@@ -114,23 +114,18 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
 {
   m_helper.Update();
   double speed = m_speed;
-  //Vector myPos = m_helper.GetCurrentPosition();
-
-  //NS_LOG_DEBUG(Simulator::Now());
   
   //Compute the direction of the movement
   Vector forceAta = VirtualSprings2dMobilityModel::ComputeAtaForce();
   Vector forceAtg = VirtualSprings2dMobilityModel::ComputeAtgForce();
   Vector force = forceAta + forceAtg;
 
-  //NS_LOG_DEBUG("ForceMod = " << force.GetLength());
+  NS_LOG_DEBUG ("AtG Force = " << forceAtg << ", AtA force = " << forceAta);
 
   double k = speed/std::sqrt(force.x*force.x + force.y*force.y);
   Vector vector (k*force.x,
   				 k*force.y,
   				 0.0);
-
-  //NS_LOG_DEBUG("Velocity = " << vector);
 
   if (force.GetLength () > m_tol)
   {
@@ -150,7 +145,6 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
     } 
     else 
     {
-      NS_LOG_DEBUG ("NOT IN RANGE");
       m_helper.Pause ();
     }
  
@@ -171,6 +165,7 @@ VirtualSprings2dMobilityModel::HasPathToBs (Vector myPos)
 {
   //Apply DFS to find any path to the BS
   int visited [m_ataNodes.size()] = {};
+  int inQueue [m_ataNodes.size()] = {};
   std::queue<int> toVisit;
 
   if (CalculateDistance(myPos, m_bsPos) < m_rangeAta)
@@ -183,12 +178,12 @@ VirtualSprings2dMobilityModel::HasPathToBs (Vector myPos)
     Vector otherPos = otherMob -> GetPosition();
     otherPos.z = 0;
     double dist = CalculateDistance(myPos, otherPos);
-    //NS_LOG_DEBUG("otherPos=" << otherPos << " distace= " << dist);
 
-    if (dist > 0  && dist < m_rangeAta && !visited[j])
+    if (dist > 0  && dist < m_rangeAta && !visited[j] && !inQueue[j])
     {   
       toVisit.push(j);
-      NS_LOG_DEBUG("Insert in queue " << j);
+      inQueue[j] = 1;
+      //NS_LOG_DEBUG("Insert in queue " << j);
     }
    }
 
@@ -197,7 +192,7 @@ VirtualSprings2dMobilityModel::HasPathToBs (Vector myPos)
    { 
      cur = toVisit.front();
      toVisit.pop();
-     NS_LOG_DEBUG ("Currently visiting " << cur);
+     //NS_LOG_DEBUG ("Currently visiting " << cur);
 
      Ptr<Node> node = NodeList::GetNode(m_ataNodes[cur]);
      Ptr<MobilityModel> mob = node -> GetObject<MobilityModel>();
@@ -217,10 +212,11 @@ VirtualSprings2dMobilityModel::HasPathToBs (Vector myPos)
         otherPos.z = 0;
         double dist = CalculateDistance(pos, otherPos);
 
-        if (dist > 0  && dist < m_rangeAta && !visited[j])
+        if (dist > 0  && dist < m_rangeAta && !visited[j] &&!inQueue[j])
         {   
           toVisit.push(j);
-          NS_LOG_DEBUG("Insert in queue " << j);
+          inQueue[j] = 1;
+          //NS_LOG_DEBUG("Insert in queue " << j);
         }
       }
     }
@@ -237,7 +233,6 @@ Vector
 VirtualSprings2dMobilityModel::ComputeAtaForce()
 {
   Vector myPos = m_helper.GetCurrentPosition ();
-  //NS_LOG_DEBUG("myPos=" << myPos);
 
   double fx = 0;
   double fy = 0;
@@ -263,9 +258,6 @@ VirtualSprings2dMobilityModel::ComputeAtaForce()
 
     }
    }
-  
-
-  //NS_LOG_DEBUG("ATA_FORCE=" << Vector(fx,fy,0));
 
   return Vector(fx,fy,0);
 }
@@ -289,11 +281,9 @@ VirtualSprings2dMobilityModel::ComputeAtgForce()
     pos.z = 0;
 
     double dist = CalculateDistance(myPos, pos);
-    //NS_LOG_DEBUG("atgNodePos=" << pos << " distace= " << dist);
 
     if (dist < m_rangeAtg)
     {   
-
         double disp = dist - m_l0Atg;
         Vector diff = pos - myPos;
         double force = kAtg*disp;
@@ -301,13 +291,8 @@ VirtualSprings2dMobilityModel::ComputeAtgForce()
 
         fx += k*diff.x;
         fy += k*diff.y;
-
-        // double theta = difference.y / difference.x;
-        // fx += -m_kAta*disp*cos(theta);
     }
    }
-
-   //NS_LOG_DEBUG("ATG_FORCE=" << Vector(fx,fy,0));
 
    return Vector(fx,fy,0);
 
@@ -339,24 +324,21 @@ VirtualSprings2dMobilityModel::GetMaxNodesNeighbours()
     }
   }
 
-  //NS_LOG_DEBUG("Max nodes of neighbours = " << curMax);
-
   return curMax;
 }
 
 double
 VirtualSprings2dMobilityModel::ComputeKatg()
 {
-  int coveredNodes = VirtualSprings2dMobilityModel::ComputeNumGroudNodes();
-  int maxNodesNeighbours = VirtualSprings2dMobilityModel::GetMaxNodesNeighbours();
+  double coveredNodes = VirtualSprings2dMobilityModel::ComputeNumGroudNodes();
+  double maxNodesNeighbours = VirtualSprings2dMobilityModel::GetMaxNodesNeighbours();
 
   if (!maxNodesNeighbours)
   {
-    //NS_LOG_DEBUG("kAtg = 1" );
     return 1;
   }
 
-  //NS_LOG_DEBUG("kAtg = " << coveredNodes/maxNodesNeighbours);
+  NS_LOG_DEBUG("kAtg = " << coveredNodes/maxNodesNeighbours);
 
   return coveredNodes/maxNodesNeighbours;
 }
@@ -383,8 +365,6 @@ VirtualSprings2dMobilityModel::ComputeNumGroudNodes(Ptr<Node> node )
     }
   }
 
-  //NS_LOG_DEBUG("Nodes covered=" << counter);
-
   return counter;
 }
 
@@ -410,8 +390,6 @@ VirtualSprings2dMobilityModel::ComputeNumGroudNodes()
     }
   }
 
-  //NS_LOG_DEBUG("Nodes covered=" << counter);
-
   return counter;
 
 }
@@ -421,12 +399,6 @@ VirtualSprings2dMobilityModel::AddAtaNode(uint32_t id)
 {
   m_ataNodes.push_back(id); 
 }
-
-// void
-// VirtualSprings2dMobilityModel::SetAtgNodes(std::vector<Ptr<Node>> nodes)
-// {
-//   m_atgNodes = nodes;
-// }
 
 void
 VirtualSprings2dMobilityModel::AddAtgNode(uint32_t id)
@@ -443,54 +415,8 @@ VirtualSprings2dMobilityModel::DoWalk (Time delayLeft)
   m_event = Simulator::Schedule (delayLeft, &VirtualSprings2dMobilityModel::DoInitializePrivate, this);
 
   NotifyCourseChange ();
-
-  /*
-  Vector position = m_helper.GetCurrentPosition ();
-  Vector speed = m_helper.GetVelocity ();
-  Vector nextPosition = position;
-  nextPosition.x += speed.x * delayLeft.GetSeconds ();
-  nextPosition.y += speed.y * delayLeft.GetSeconds ();
-  m_event.Cancel ();
-  if (m_bounds.IsInside (nextPosition))
-    {
-      m_event = Simulator::Schedule (delayLeft, &VirtualSprings2dMobilityModel::DoInitializePrivate, this);
-    }
-  else
-    {
-      nextPosition = m_bounds.CalculateIntersection (position, speed);
-      Time delay = Seconds ((nextPosition.x - position.x) / speed.x);
-      m_event = Simulator::Schedule (delay, &VirtualSprings2dMobilityModel::Rebound, this,
-                                     delayLeft - delay);
-    }
-  NotifyCourseChange ();
-  */
 }
 
-/*
-void
-VirtualSprings2dMobilityModel::Rebound (Time delayLeft)
-{
-  m_helper.UpdateWithBounds (m_bounds);
-  Vector position = m_helper.GetCurrentPosition ();
-  Vector speed = m_helper.GetVelocity ();
-  switch (m_bounds.GetClosestSide (position))
-    {
-    case Rectangle::RIGHT:
-    case Rectangle::LEFT:
-      speed.x = -speed.x;
-      break;
-    case Rectangle::TOP:
-    case Rectangle::BOTTOM:
-      speed.y = -speed.y;
-      break;
-    }
-  m_helper.SetVelocity (speed);
-  m_helper.Unpause ();
-  DoWalk (delayLeft);
-  
-}
-
-*/
 
 void
 VirtualSprings2dMobilityModel::DoDispose (void)
@@ -498,30 +424,22 @@ VirtualSprings2dMobilityModel::DoDispose (void)
   // chain up
   MobilityModel::DoDispose ();
 }
+
 Vector
 VirtualSprings2dMobilityModel::DoGetPosition (void) const
 {
   m_helper.Update();
   return m_helper.GetCurrentPosition ();	
-  /*
-  m_helper.UpdateWithBounds (m_bounds);
-  return m_helper.GetCurrentPosition ();
-  */
 }
+
 void
 VirtualSprings2dMobilityModel::DoSetPosition (const Vector &position)
 { 
   m_helper.SetPosition (position);
   Simulator::Remove (m_event);
   m_event = Simulator::ScheduleNow (&VirtualSprings2dMobilityModel::DoInitializePrivate, this);
-
-  /*
-  NS_ASSERT (m_bounds.IsInside (position));
-  m_helper.SetPosition (position);
-  Simulator::Remove (m_event);
-  m_event = Simulator::ScheduleNow (&VirtualSprings2dMobilityModel::DoInitializePrivate, this);
-  */
 }
+
 Vector
 VirtualSprings2dMobilityModel::DoGetVelocity (void) const
 {
