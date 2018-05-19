@@ -47,8 +47,9 @@ NS_LOG_COMPONENT_DEFINE("VsfExp1");
 std::string filename;
 
 std::string phyMode ("ErpOfdmRate12Mbps");
-uint32_t numTeams = 3;
+uint32_t numTeams = 2;
 uint32_t numUavs = 4;
+uint32_t numMembers = 5;
 
 //NodeContainer endDevices;
 
@@ -229,14 +230,12 @@ main (int argc, char* argv[]){
   *****************************/
 	//LogComponentEnable("UdpRelay", LOG_LEVEL_INFO);
 	//LogComponentEnable("UdpServer", LOG_LEVEL_INFO);
-  LogComponentEnable ("FiremenMobilityModel", LOG_LEVEL_DEBUG);
+  //LogComponentEnable ("FiremenMobilityModel", LOG_LEVEL_DEBUG);
   //LogComponentEnable ("MobilityHelper", LOG_LEVEL_DEBUG);
   //LogComponentEnable ("EndDeviceLoraPhy", LOG_LEVEL_INFO);
   //LogComponentEnable ("GatewayLoraPhy", LOG_LEVEL_INFO);
   //LogComponentEnable ("GatewayLoraMac", LOG_LEVEL_INFO);
-  //LogComponentEnable ("ConstantVelocityHelper", LOG_LEVEL_DEBUG);
-  //LogComponentEnable ("VirtualSprings2d", LOG_LEVEL_DEBUG);
-  //LogComponentEnable ("PropagationLossModel", LOG_LEVEL_DEBUG);
+  LogComponentEnable ("VirtualSprings2d", LOG_LEVEL_DEBUG);
 
 	LogComponentEnableAll (LOG_PREFIX_FUNC);
   LogComponentEnableAll (LOG_PREFIX_NODE);
@@ -257,6 +256,7 @@ main (int argc, char* argv[]){
   CommandLine cmd;
   cmd.AddValue ("NumTeams", "Number of teams", numTeams);
   cmd.AddValue("NumUAVs", "Number of UAVs", numUavs);
+  cmd.AddValue("NumMembers", "Number of team members", numMembers);
   cmd.Parse (argc, argv);
 
   /************************
@@ -341,29 +341,29 @@ main (int argc, char* argv[]){
   switch (numTeams)
   {
     case (1):
-      team0.Create (20);
+      team0.Create (numMembers);
       break;
     case (2):
-      team0.Create (20);
-      team1.Create (20);
+      team0.Create (numMembers);
+      team1.Create (numMembers);
       break;
     case (3):
-      team0.Create (20);
-      team1.Create (20);
-      team2.Create (20);
+      team0.Create (numMembers);
+      team1.Create (numMembers);
+      team2.Create (numMembers);
       break;
     case (4):
-      team0.Create (20);
-      team1.Create (20);
-      team2.Create (20);
-      team3.Create (20);
+      team0.Create (numMembers);
+      team1.Create (numMembers);
+      team2.Create (numMembers);
+      team3.Create (numMembers);
       break;
     case (5):
-      team0.Create (20);
-      team1.Create (20);
-      team2.Create (20);
-      team3.Create (20);
-      team4.Create (20);
+      team0.Create (numMembers);
+      team1.Create (numMembers);
+      team2.Create (numMembers);
+      team3.Create (numMembers);
+      team4.Create (numMembers);
       break;
   }
 
@@ -379,9 +379,11 @@ main (int argc, char* argv[]){
   edsAllocator->SetX(250.0);
   edsAllocator->SetY(250.0);
 
+  Rectangle area = Rectangle (0, 1000, 0, 1000);
+
   mobility.SetPositionAllocator (edsAllocator);
   mobility.SetMobilityModel ("ns3::FiremenMobilityModel",
-                             "PropagationArea", RectangleValue(Rectangle(0,500,0,500)),
+                             "PropagationArea", RectangleValue(area),
                              "SpreadY", DoubleValue(100),
                              "NumTeams", IntegerValue(3),
                              "TeamId", IntegerValue (0));
@@ -394,7 +396,7 @@ main (int argc, char* argv[]){
 
   mobility.SetPositionAllocator (edsAllocator);
   mobility.SetMobilityModel ("ns3::FiremenMobilityModel",
-                             "PropagationArea", RectangleValue(Rectangle(0,500,0,500)),
+                             "PropagationArea", RectangleValue(area),
                              "SpreadY", DoubleValue(100),
                              "NumTeams", IntegerValue(3),
                              "TeamId", IntegerValue (1));
@@ -407,7 +409,7 @@ main (int argc, char* argv[]){
 
   mobility.SetPositionAllocator (edsAllocator);
   mobility.SetMobilityModel ("ns3::FiremenMobilityModel",
-                             "PropagationArea", RectangleValue(Rectangle(0,500,0,500)),
+                             "PropagationArea", RectangleValue(area),
                              "SpreadY", DoubleValue(100),
                              "NumTeams", IntegerValue(3),
                              "TeamId", IntegerValue (2));
@@ -420,7 +422,7 @@ main (int argc, char* argv[]){
 
   mobility.SetPositionAllocator (edsAllocator);
   mobility.SetMobilityModel ("ns3::FiremenMobilityModel",
-                             "PropagationArea", RectangleValue(Rectangle(0,500,0,500)),
+                             "PropagationArea", RectangleValue(area),
                              "SpreadY", DoubleValue(100),
                              "NumTeams", IntegerValue(3),
                              "TeamId", IntegerValue (3));
@@ -433,7 +435,7 @@ main (int argc, char* argv[]){
 
   mobility.SetPositionAllocator (edsAllocator);
   mobility.SetMobilityModel ("ns3::FiremenMobilityModel",
-                             "PropagationArea", RectangleValue(Rectangle(0,500,0,500)),
+                             "PropagationArea", RectangleValue(area),
                              "SpreadY", DoubleValue(100),
                              "NumTeams", IntegerValue(3),
                              "TeamId", IntegerValue (4));
@@ -464,11 +466,15 @@ main (int argc, char* argv[]){
 
   mobility.SetPositionAllocator (nodesAllocator);
   mobility.SetMobilityModel ("ns3::VirtualSprings2dMobilityModel", 
-  																	"Time", TimeValue(Seconds(1)),
-  																	"Tolerance", DoubleValue(20.0),
+  																	"Time", TimeValue(Seconds(10)),
+  																	"Tolerance", DoubleValue(10),
+                                    "Speed", DoubleValue (2),
                                     "BsPosition", VectorValue(bsPos),
                                     "TxRangeAta", DoubleValue(500),
-                                    "l0Ata", DoubleValue(250));
+                                    "TxRangeAtg", DoubleValue (150),
+                                    "l0Atg", DoubleValue (50),
+                                    "l0Ata", DoubleValue(250),
+                                    "kAta", DoubleValue (1));
   mobility.Install (ataNodes);
   
   // Setup Nodes in VSF mobility model
@@ -491,6 +497,8 @@ main (int argc, char* argv[]){
       model -> AddAtgNode(nodeToAdd -> GetId());
     }
   }
+
+  NS_LOG_UNCOND (endDevices.GetN());
 
   phyHelper.SetDeviceType (LoraPhyHelper::GW);
   macHelper.SetDeviceType (LoraMacHelper::GW);
@@ -666,7 +674,7 @@ main (int argc, char* argv[]){
       anim.UpdateNodeImage (ataNodes.Get (i)-> GetId(), uavIcon); 
   }
 
-  anim.SetBackgroundImage("background.jpg", 0, 0, 0.5, 0.5, 0.8);
+  anim.SetBackgroundImage("background.jpg", 0, 0, 1, 1, 0.8);
 
   Simulator::Run ();
 
