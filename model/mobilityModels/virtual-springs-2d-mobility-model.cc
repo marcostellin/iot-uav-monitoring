@@ -96,7 +96,11 @@ VirtualSprings2dMobilityModel::GetTypeId (void)
     .AddAttribute ("BsPosition", "Position of BS",
                        VectorValue (Vector (200.0, 200.0, 0.0)), // ignored initial value.
                        MakeVectorAccessor (&VirtualSprings2dMobilityModel::m_bsPos),
-                       MakeVectorChecker ());         
+                       MakeVectorChecker ())
+    .AddTraceSource ("NodesInRange",
+                     "Nodes in range have changed",
+                      MakeTraceSourceAccessor (&VirtualSprings2dMobilityModel::m_nodesInRangeTrace),
+                     "ns3::VirtualSprings2dMobilityModel::TracedCallback");         
                    
                    
   return tid;
@@ -105,6 +109,13 @@ VirtualSprings2dMobilityModel::GetTypeId (void)
 void
 VirtualSprings2dMobilityModel::DoInitialize (void)
 {
+  // m_nodesCovered.resize (m_atgNodes.size());
+
+  // for (uint32_t j = 0; j < m_nodesCovered.capacity(); j++)
+  // {
+  //   m_nodesCovered[j] = -1;
+  // }
+
   DoInitializePrivate ();
   MobilityModel::DoInitialize ();
 }
@@ -145,6 +156,7 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
     } 
     else 
     {
+      NS_LOG_DEBUG ("Not in range of BS");
       m_helper.Pause ();
     }
  
@@ -350,7 +362,10 @@ VirtualSprings2dMobilityModel::ComputeNumGroudNodes(Ptr<Node> node )
   Vector pos = mob -> GetPosition();
   pos.z = 0;
 
+  //bool coverageChange = false;
   int counter = 0;
+  std::vector<int> nodesCovered;
+
   for (uint16_t j = 0; j < m_atgNodes.size(); j++)
   {
     Ptr<Node> atgNode = NodeList::GetNode(m_atgNodes[j]);
@@ -361,9 +376,14 @@ VirtualSprings2dMobilityModel::ComputeNumGroudNodes(Ptr<Node> node )
 
     if (dist < m_rangeAtg)
     {
+      nodesCovered.push_back (m_atgNodes[j]);
+
       counter++;
-    }
+
+    } 
   }
+
+  m_nodesInRangeTrace (nodesCovered);
 
   return counter;
 }

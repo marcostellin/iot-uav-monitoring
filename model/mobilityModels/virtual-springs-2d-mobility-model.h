@@ -26,6 +26,7 @@
 #include "ns3/event-id.h"
 #include "ns3/rectangle.h"
 #include "ns3/random-variable-stream.h"
+#include "ns3/traced-callback.h"
 #include "mobility-model.h"
 #include "constant-velocity-helper.h"
 #include "ns3/propagation-loss-model.h"
@@ -54,6 +55,7 @@ public:
    * \return the object TypeId
    */
   static TypeId GetTypeId (void);
+  typedef void (* TracedCallback)(const std::vector<uint32_t> &vector);
   void AddAtaNode(uint32_t nodes);
   void AddAtgNode(uint32_t nodes);
   //void SetAtgNodes(std::vector<Ptr<Node>> nodes);
@@ -103,6 +105,10 @@ private:
   
   std::vector<uint32_t> m_ataNodes;
   std::vector<uint32_t> m_atgNodes;
+  //std::vector<int> m_nodesCovered;
+
+  //Trace sources
+  ns3::TracedCallback<const std::vector<int> &> m_nodesInRangeTrace;
 };
 
 
