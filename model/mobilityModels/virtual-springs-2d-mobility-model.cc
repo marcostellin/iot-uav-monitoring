@@ -25,6 +25,7 @@
 #include "ns3/simulator.h"
 #include "ns3/log.h"
 #include "ns3/node-list.h"
+#include "ns3/boolean.h"
 #include <cmath>
 #include <algorithm>
 #include <queue>
@@ -97,6 +98,12 @@ VirtualSprings2dMobilityModel::GetTypeId (void)
                        VectorValue (Vector (200.0, 200.0, 0.0)), // ignored initial value.
                        MakeVectorAccessor (&VirtualSprings2dMobilityModel::m_bsPos),
                        MakeVectorChecker ())
+
+    .AddAttribute ("KatgPlusMode", "K_ATG boost option",
+                       BooleanValue (true), // ignored initial value.
+                       MakeBooleanAccessor (&VirtualSprings2dMobilityModel::m_kAtgPlusMode),
+                       MakeBooleanChecker ())
+
     .AddTraceSource ("NodesInRange",
                      "Nodes in range have changed",
                       MakeTraceSourceAccessor (&VirtualSprings2dMobilityModel::m_nodesInRangeTrace),
@@ -293,12 +300,38 @@ VirtualSprings2dMobilityModel::ComputeAtgForce()
     pos.z = 0;
 
     double dist = CalculateDistance(myPos, pos);
+    double kAtgPlus = 1;
 
     if (dist < m_rangeAtg)
     {   
+        if (m_kAtgPlusMode)
+        {
+          uint16_t cnt = 1;
+          for (uint16_t i = 0; i < m_ataNodes.size (); i++)
+          {
+            Ptr<Node> ataNode = NodeList::GetNode(m_ataNodes[i]);
+            Ptr<MobilityModel> ataMob = ataNode -> GetObject<MobilityModel> ();
+            Vector ataPos = ataMob -> GetPosition ();
+            ataPos.z = 0;
+
+            double ataDist = CalculateDistance (pos, ataPos);
+
+            if (ataDist < m_rangeAtg)
+            {
+              cnt++;
+            }
+
+          }
+
+          cnt > 1 ? kAtgPlus = 1 : kAtgPlus = 2;
+          //double kAtgPlus = 1.0 / (double)cnt;
+
+          NS_LOG_DEBUG ("K_ATG_PLUS = " << kAtgPlus);
+        }
+
         double disp = dist - m_l0Atg;
         Vector diff = pos - myPos;
-        double force = kAtg*disp;
+        double force = ( kAtg * kAtgPlus ) * disp;
         double k = force/std::sqrt(diff.x*diff.x + diff.y*diff.y);
 
         fx += k*diff.x;

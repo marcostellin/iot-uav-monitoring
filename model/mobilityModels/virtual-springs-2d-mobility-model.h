@@ -102,6 +102,8 @@ private:
   double m_l0Ata;
   double m_l0Atg;
   double m_tol;
+
+  bool m_kAtgPlusMode;
   
   std::vector<uint32_t> m_ataNodes;
   std::vector<uint32_t> m_atgNodes;
