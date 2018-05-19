@@ -12,9 +12,9 @@
 #include "ns3/applications-module.h"
 #include "ns3/propagation-loss-model.h"
 #include "ns3/virtual-springs-2d-mobility-model.h"
-#include "ns3/random-walk-2d-mobility-model.h"
-#include "ns3/hierarchical-mobility-model.h"
-#include "ns3/waypoint-mobility-model.h"
+//#include "ns3/random-walk-2d-mobility-model.h"
+//#include "ns3/hierarchical-mobility-model.h"
+//#include "ns3/waypoint-mobility-model.h"
 #include "ns3/constant-position-mobility-model.h"
 #include "ns3/firemen-mobility-model.h"
 //#include "ns3/alfa-friis-loss-model.h"
@@ -39,10 +39,12 @@
 #include <fstream>
 #include <string>
 #include <fstream>
+#include <utility>
+#include <unordered_set>
 
 using namespace ns3;
 
-NS_LOG_COMPONENT_DEFINE("VsfExp1");
+NS_LOG_COMPONENT_DEFINE("VsfExp2");
 
 std::string filename;
 
@@ -85,6 +87,14 @@ struct EdStatus
 std::map<Ptr<Packet const>, PacketStatus> packetTracker;
 std::map<uint64_t, PacketStatus> packetRelayedTracker;
 std::map<Ptr<Node>, EdStatus> edTracker;
+
+
+std::vector<std::pair<int64_t,double>> connTracker;
+Time lastInsert = Seconds (-1);
+uint32_t curUniqueCoveredNodes = 0;
+
+
+std::unordered_set<int> curConn;
 
 void
 TransmissionCallback (Ptr<Packet const> packet, uint32_t systemId)
@@ -193,15 +203,15 @@ UnderSensitivityCallback (Ptr<Packet const> packet, uint32_t systemId)
 bool
 ReceiveFromLora (Ptr<NetDevice> loraNetDevice, Ptr<const Packet> packet, uint16_t protocol, const Address& sender)
 {
-  NS_LOG_DEBUG("ReceiveFromLora Callback!");
-  NS_LOG_DEBUG(Simulator::Now().GetSeconds());
+  //NS_LOG_DEBUG("ReceiveFromLora Callback!");
+  //NS_LOG_DEBUG(Simulator::Now().GetSeconds());
   
   Ptr<Node> node = loraNetDevice ->GetNode();
   Ptr<UdpRelay> relay = DynamicCast<UdpRelay>(node -> GetApplication(0));
   Ptr<Packet> relayedPkt = packet -> Copy();
 
-  NS_LOG_DEBUG ("Original Packet UID " << packet -> GetUid ());
-  NS_LOG_DEBUG ("Copied Packet UID " << relayedPkt -> GetUid ());
+  //NS_LOG_DEBUG ("Original Packet UID " << packet -> GetUid ());
+  //NS_LOG_DEBUG ("Copied Packet UID " << relayedPkt -> GetUid ());
 
   PacketStatus status;
   status.packet = packet;
@@ -222,6 +232,90 @@ ReceiveFromBs(Ptr<const Packet> packet, const Address &addr)
   (*it).second.recv = true;
 }
 
+void
+ChangedConnectivity (const std::vector<int> &coveredList)
+{
+	Time curTime = Simulator::Now ();
+
+	if (curTime > lastInsert)
+	{
+		std::pair <int64_t,double> measurement = std::make_pair (lastInsert.GetMilliSeconds (), curConn.size ());
+		connTracker.push_back (measurement);
+
+		curConn.clear ();
+		lastInsert = curTime;
+	}
+
+	for (uint16_t i = 0; i < coveredList.size (); i++)
+	{
+		curConn.insert (coveredList[i]);
+	}
+
+}
+
+/********************
+/ Utility functions *
+********************/
+
+void
+WriteNodeStats () 
+{
+	std::ofstream file;
+	file.open ("node-stats.out.txt");
+	file << "/* Unique packets received by the BS */" << std::endl;
+	file << "id,nSent,nRecv,nInterf,nNoRecvs,nUnderSens,PDR, avgDelayToGw, avgDelayToBs" << std::endl;
+
+  for (std::map<Ptr<Node>, EdStatus>::iterator it=edTracker.begin(); it!=edTracker.end(); ++it)
+  {
+    file << it -> first -> GetId () << "," << 
+    						 it -> second.nSent  << "," <<  
+    						 it -> second.nRecv << "," <<
+    						 it -> second.nInterf << "," <<
+    						 it -> second.nNoRecvs << "," <<
+    						 it -> second.nUnderSens << std::endl;
+  }
+
+  file.close ();
+}
+
+void
+WriteMeshPdr () 
+{
+	std::ofstream file;
+	file.open ("mesh-pdr-stats.out.txt");
+	file << "sent,received,notReceived" << std::endl;
+
+	uint16_t nBsRecv = 0;
+  uint16_t nBsNotRecv = 0;
+  for (std::map<uint64_t, PacketStatus>::iterator it=packetRelayedTracker.begin(); it!=packetRelayedTracker.end(); ++it)
+  {
+    if (it -> second.recv)
+      nBsRecv++;
+    else
+      nBsNotRecv++;
+  }
+
+  file << nBsRecv + nBsNotRecv << "," << nBsRecv << "," << nBsNotRecv << std::endl;
+
+  file.close();
+}
+
+void
+WriteConnectivityStats ()
+{
+	std::ofstream file;
+	file.open ("connectivity-stats.out.txt");
+
+	for (uint16_t i = 0; i < connTracker.size (); i++)
+	{
+		std::pair<int64_t, double> pair = connTracker[i];
+		file << pair.first << "," << pair.second / (numMembers*numTeams) << std::endl;
+	}
+
+	file.close ();
+}
+
+
 int
 main (int argc, char* argv[]){
 
@@ -236,6 +330,7 @@ main (int argc, char* argv[]){
   //LogComponentEnable ("GatewayLoraPhy", LOG_LEVEL_INFO);
   //LogComponentEnable ("GatewayLoraMac", LOG_LEVEL_INFO);
   LogComponentEnable ("VirtualSprings2d", LOG_LEVEL_DEBUG);
+  LogComponentEnable ("VsfExp2", LOG_LEVEL_DEBUG);
 
 	LogComponentEnableAll (LOG_PREFIX_FUNC);
   LogComponentEnableAll (LOG_PREFIX_NODE);
@@ -244,10 +339,10 @@ main (int argc, char* argv[]){
   RngSeedManager::SetSeed (3);  // Changes seed from default of 1 to 3
   RngSeedManager::SetRun (10); 
 
-  filename = "nodes-stats.out.txt";
-  std::ofstream out(filename);
-  std::streambuf *coutbuf = std::cout.rdbuf();
-  std::cout.rdbuf(out.rdbuf());
+  // filename = "nodes-stats.out.txt";
+  // std::ofstream out(filename);
+  // std::streambuf *coutbuf = std::cout.rdbuf();
+  // std::cout.rdbuf(out.rdbuf());
   
   /***********************
   * Set params           *
@@ -468,7 +563,7 @@ main (int argc, char* argv[]){
   mobility.SetMobilityModel ("ns3::VirtualSprings2dMobilityModel", 
   																	"Time", TimeValue(Seconds(10)),
   																	"Tolerance", DoubleValue(10),
-                                    "Speed", DoubleValue (2),
+                                    "Speed", DoubleValue (1.5),
                                     "BsPosition", VectorValue(bsPos),
                                     "TxRangeAta", DoubleValue(500),
                                     "TxRangeAtg", DoubleValue (150),
@@ -498,7 +593,14 @@ main (int argc, char* argv[]){
     }
   }
 
-  NS_LOG_UNCOND (endDevices.GetN());
+  //Setup Callbacks of VSF
+  for (NodeContainer::Iterator j = ataNodes.Begin (); j != ataNodes.End (); ++j)
+  {
+  	Ptr<Node> node = *j;
+    Ptr<VirtualSprings2dMobilityModel> model = node -> GetObject<VirtualSprings2dMobilityModel>();
+
+    model -> TraceConnectWithoutContext ("NodesInRange", MakeCallback (&ChangedConnectivity) );
+  }
 
   phyHelper.SetDeviceType (LoraPhyHelper::GW);
   macHelper.SetDeviceType (LoraMacHelper::GW);
@@ -684,34 +786,40 @@ main (int argc, char* argv[]){
   /************************
   * Save/Print Stats      *
   ************************/
-  std::cout << "id,nSent,nRecv,nInterf,nNoRecvs,nUnderSens,PDR, avgDelayToGw, avgDelayToBs" << std::endl;
+  // std::cout << "id,nSent,nRecv,nInterf,nNoRecvs,nUnderSens,PDR, avgDelayToGw, avgDelayToBs" << std::endl;
 
-  for (std::map<Ptr<Node>, EdStatus>::iterator it=edTracker.begin(); it!=edTracker.end(); ++it)
-  {
-    std::cout << it -> first -> GetId () << "," << 
-    						 it -> second.nSent  << "," <<  
-    						 it -> second.nRecv << "," <<
-    						 it -> second.nInterf << "," <<
-    						 it -> second.nNoRecvs << "," <<
-    						 it -> second.nUnderSens << std::endl;
-  }
+  // for (std::map<Ptr<Node>, EdStatus>::iterator it=edTracker.begin(); it!=edTracker.end(); ++it)
+  // {
+  //   std::cout << it -> first -> GetId () << "," << 
+  //   						 it -> second.nSent  << "," <<  
+  //   						 it -> second.nRecv << "," <<
+  //   						 it -> second.nInterf << "," <<
+  //   						 it -> second.nNoRecvs << "," <<
+  //   						 it -> second.nUnderSens << std::endl;
+  // }
 
-  std::cout << "BsTot, BsRecv, BsNotRecv" << std::endl;
+  // std::cout << "BsTot, BsRecv, BsNotRecv" << std::endl;
 
-  int nBsRecv = 0;
-  int nBsNotRecv = 0;
-  for (std::map<uint64_t, PacketStatus>::iterator it=packetRelayedTracker.begin(); it!=packetRelayedTracker.end(); ++it)
-  {
-    //NS_LOG_UNCOND("iteration");
-    if (it -> second.recv)
-      nBsRecv++;
-    else
-      nBsNotRecv++;
-  }
+  WriteNodeStats ();
 
-  std::cout << nBsRecv + nBsNotRecv << "," << nBsRecv << "," << nBsNotRecv << std::endl;
+  WriteMeshPdr ();
 
-  std::cout.rdbuf(coutbuf);
+  WriteConnectivityStats ();
+
+  // int nBsRecv = 0;
+  // int nBsNotRecv = 0;
+  // for (std::map<uint64_t, PacketStatus>::iterator it=packetRelayedTracker.begin(); it!=packetRelayedTracker.end(); ++it)
+  // {
+  //   //NS_LOG_UNCOND("iteration");
+  //   if (it -> second.recv)
+  //     nBsRecv++;
+  //   else
+  //     nBsNotRecv++;
+  // }
+
+  // std::cout << nBsRecv + nBsNotRecv << "," << nBsRecv << "," << nBsNotRecv << std::endl;
+
+  // std::cout.rdbuf(coutbuf);
 
   
 
