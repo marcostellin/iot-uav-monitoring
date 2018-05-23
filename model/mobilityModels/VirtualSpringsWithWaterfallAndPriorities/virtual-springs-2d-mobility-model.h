@@ -84,6 +84,8 @@ private:
   int ComputeNumGroudNodes(Ptr<Node> node);
   int ComputeNumGroudNodes(void);
   bool HasPathToBs (Vector myPos);
+  olsr::RoutingTableEntry HasPathToBs ();
+  uint32_t SetPause (uint32_t hops);
 
 
   virtual void DoDispose (void);
@@ -99,9 +101,9 @@ private:
   Vector m_bsPos;
   Ipv4Address m_bsAddr;
   Vector m_prevPos;
-  uint32_t m_counter;
+  uint32_t m_pause;
   uint32_t m_hops;
-  uint32_t m_goOn;
+  uint32_t m_persist;
 
   double m_speed; //!< Speed of aerial nodes
   double m_kAta; //<! stifness of aerial springs

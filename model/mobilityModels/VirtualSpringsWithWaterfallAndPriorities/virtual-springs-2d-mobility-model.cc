@@ -122,9 +122,11 @@ VirtualSprings2dMobilityModel::GetTypeId (void)
 void
 VirtualSprings2dMobilityModel::DoInitialize (void)
 {
-  m_counter = 0;
+  //Initialize private variables
+  m_pause = 0;
   m_hops = 0;
-  m_goOn = 0;
+  m_persist = 0;
+
   DoInitializePrivate ();
   MobilityModel::DoInitialize ();
 }
@@ -147,6 +149,7 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
   				 k*force.y,
   				 0.0);
 
+  //Move only if force is bigger than a threshold to avoid oscillations
   if (force.GetLength () > m_tol)
   {
     //Compute the future position based on current velocity and direction
@@ -158,77 +161,66 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
     m_helper.SetVelocity(vector);
     m_helper.Unpause();
 
-    std::vector<ns3::olsr::RoutingTableEntry> entries = m_routing -> ns3::olsr::RoutingProtocol::GetRoutingTableEntries ();
+    //bool isInRange = false;
+    //uint32_t hops = 0;
 
-    bool isInRange = false;
-    uint32_t hops = 0;
-
-    for (uint16_t i = 0; i < entries.size(); i++)
+    olsr::RoutingTableEntry entry = VirtualSprings2dMobilityModel::HasPathToBs();
+    
+    //If a path to the BS exists
+    if (entry.distance != 0) 
     {
-      if (entries[i].destAddr.IsEqual (m_bsAddr))
+      m_hops = entry.distance;
+      m_persist = 3*(entry.distance - 1);
+
+      //Move according to forces if m_pause intervals have passed...
+      if (m_pause == 0) 
       {
-        isInRange = true;
-        hops = entries[i].distance;
-        break;
-      }
-    }
-
-    if (isInRange && m_counter == 0) 
-    {
-      m_prevPos = m_helper.GetCurrentPosition ();
-      m_hops = hops;
-      m_goOn = hops - 1;
-      // Vector curPos = m_helper.GetCurrentPosition ();
-
-      m_helper.SetVelocity(vector);
-      m_helper.Unpause ();
-    }
-    else if (isInRange && m_counter > 0)
-    {
-      m_counter --;
-      m_helper.Pause ();
-    }
-    else if (m_goOn == 0)
-    {
-      NS_LOG_INFO ("Not in range of BS. Going Back!");
-
-      Vector curPos = m_helper.GetCurrentPosition ();
-      //Vector diff = m_prevPos - curPos;
-      Vector diff = m_bsPos - curPos;
-      double h = speed*2/std::sqrt(diff.x*diff.x + diff.y*diff.y);
-      Vector vec (h*diff.x,
-           h*diff.y,
-           0.0);
-
-      //NS_LOG_DEBUG ("Speed = " << vec.GetLength ());
-      if (m_hops > 0){
-        m_counter = (100.0 * std::exp (-m_modeTime.GetSeconds () / 10.0) /(std::pow(m_hops, 3)));
-        //double temp = (100.0 * std::exp (m_modeTime.GetSeconds () / 10.0) /(std::pow(m_hops, 3)));
-        NS_LOG_INFO ("Stop for " << m_counter << " intervals");
+        m_helper.SetVelocity(vector);
+        m_helper.Unpause ();
       }
 
-      m_helper.SetVelocity(vec);
-      m_helper.Unpause ();
-    } else {
-
-      m_helper.SetVelocity(vector);
-      m_helper.Unpause ();
+      //Or don't do anything if m_pause intervals still have to pass.
+      if (m_pause > 0)
+      {
+        m_pause --;
+        m_helper.Pause ();
+      }
 
     }
 
-    // if (VirtualSprings2dMobilityModel::HasPathToBs (nextPos))
-    // {
-    //   m_helper.SetVelocity(vector);
-    //   m_helper.Unpause();
-    // } 
-    // else 
-    // {
-    //   NS_LOG_DEBUG ("Not in range of BS");
-    //   m_helper.Pause ();
-    // }
+    if (entry.distance  == 0)
+    {
+      //Go back and try to recover connectivity...
+      if (m_persist == 0)
+      {
+        NS_LOG_INFO ("Not in range of BS. Going Back!");
+        Vector curPos = m_helper.GetCurrentPosition ();
+        Vector diff = m_bsPos - curPos;
+        double h = speed*2/std::sqrt(diff.x*diff.x + diff.y*diff.y);
+        Vector vec (h*diff.x,
+                    h*diff.y,
+                    0.0);
+
+        NS_LOG_INFO ("m_hops = " << m_hops);
+        m_pause = VirtualSprings2dMobilityModel::SetPause(m_hops);
+
+        m_helper.SetVelocity(vec);
+        m_helper.Unpause ();
+      }
+
+      //Try to go on and see if connectivity is recovered after m_persist intervals...
+      if (m_persist > 0)
+      {
+        NS_LOG_INFO ("Persit on route for " << m_persist << " intervals");
+        m_persist --;
+        m_helper.SetVelocity(vector);
+        m_helper.Unpause ();
+      }  
+
+    }
  
   }
-  else 
+  else //Stop if force is too small
   {
     m_helper.Pause();
   }
@@ -238,6 +230,37 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
   DoWalk (delayLeft);
   
 }
+
+olsr::RoutingTableEntry
+VirtualSprings2dMobilityModel::HasPathToBs ()
+{
+  std::vector<ns3::olsr::RoutingTableEntry> entries = m_routing -> ns3::olsr::RoutingProtocol::GetRoutingTableEntries ();
+
+  for (uint16_t i = 0; i < entries.size(); i++)
+  {
+    if (entries[i].destAddr.IsEqual (m_bsAddr))
+    {
+      return entries[i];
+    }
+  }
+
+  return olsr::RoutingTableEntry ();
+
+}
+
+uint32_t
+VirtualSprings2dMobilityModel::SetPause (uint32_t hops)
+{
+  if (hops > 0)
+  {
+    double pause = 100.0 * std::exp (-m_modeTime.GetSeconds () / 10.0) /(std::pow(hops, 3)) + 1;
+    NS_LOG_INFO ("Stop for " << (uint32_t)pause << " intervals");
+    return (uint32_t)pause;
+  }
+
+  return 0;
+}
+
 
 bool
 VirtualSprings2dMobilityModel::HasPathToBs (Vector myPos)
