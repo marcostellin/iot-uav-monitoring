@@ -86,6 +86,7 @@ private:
   bool HasPathToBs (Vector myPos);
   olsr::RoutingTableEntry HasPathToBs ();
   uint32_t SetPause (uint32_t hops);
+  void SetNeighboursList (void);
 
 
   virtual void DoDispose (void);
@@ -117,6 +118,7 @@ private:
   
   std::vector<uint32_t> m_ataNodes;
   std::vector<uint32_t> m_atgNodes;
+  std::vector<uint32_t> m_neighbours;
   //std::vector<int> m_nodesCovered;
 
   Ptr<olsr::RoutingProtocol> m_routing;
