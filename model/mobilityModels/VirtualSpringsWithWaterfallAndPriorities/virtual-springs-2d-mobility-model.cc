@@ -62,8 +62,7 @@ VirtualSprings2dMobilityModel::GetTypeId (void)
                    DoubleValue (30.0),
                    MakeDoubleAccessor (&VirtualSprings2dMobilityModel::m_tol),
                    MakeDoubleChecker<double> ())
-                   
-                   
+                                 
     .AddAttribute ("kAta",
                    "Stifness of AtA springs",
                    DoubleValue (0.5),
@@ -81,7 +80,6 @@ VirtualSprings2dMobilityModel::GetTypeId (void)
                    DoubleValue (20),
                    MakeDoubleAccessor (&VirtualSprings2dMobilityModel::m_l0Atg),
                    MakeDoubleChecker<double> ())
-    
                    
     .AddAttribute ("TxRangeAta",
                    "Transmission Range of AtA links",
@@ -138,16 +136,26 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
   double speed = m_speed;
   
   //Compute the direction of the movement
-  Vector forceAta = VirtualSprings2dMobilityModel::ComputeAtaForce();
-  Vector forceAtg = VirtualSprings2dMobilityModel::ComputeAtgForce();
+  Vector forceAta = VirtualSprings2dMobilityModel::ComputeAtaForce ();
+  Vector forceAtg = VirtualSprings2dMobilityModel::ComputeAtgForce ();
+
+  // //Scale forces
+  forceAta.x = forceAta.x / 10.0;
+  forceAta.y = forceAta.y / 10.0;
+  forceAta.z = forceAta.z / 10.0;
+
+  forceAtg.x = forceAtg.x / 10.0;
+  forceAtg.y = forceAtg.y / 10.0;
+  forceAtg.z = forceAtg.z / 10.0;
+
   Vector force = forceAta + forceAtg;
 
   NS_LOG_DEBUG ("AtG Force = " << forceAtg << ", AtA force = " << forceAta);
 
   double k = speed/std::sqrt(force.x*force.x + force.y*force.y);
   Vector vector (k*force.x,
-  				 k*force.y,
-  				 0.0);
+  				       k*force.y,
+  				       0.0);
 
   //Move only if force is bigger than a threshold to avoid oscillations
   if (force.GetLength () > m_tol)
@@ -157,12 +165,6 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
     Vector nextPos;
     nextPos.x = myPos.x + vector.x * m_modeTime.GetSeconds ();
     nextPos.y = myPos.y + vector.y * m_modeTime.GetSeconds ();
-
-    m_helper.SetVelocity(vector);
-    m_helper.Unpause();
-
-    //bool isInRange = false;
-    //uint32_t hops = 0;
 
     olsr::RoutingTableEntry entry = VirtualSprings2dMobilityModel::HasPathToBs();
     
@@ -261,76 +263,6 @@ VirtualSprings2dMobilityModel::SetPause (uint32_t hops)
   return 0;
 }
 
-
-bool
-VirtualSprings2dMobilityModel::HasPathToBs (Vector myPos)
-{
-  //Apply DFS to find any path to the BS
-  int visited [m_ataNodes.size()] = {};
-  int inQueue [m_ataNodes.size()] = {};
-  std::queue<int> toVisit;
-
-  if (CalculateDistance(myPos, m_bsPos) < m_rangeAta)
-    return true;
-
-  for (uint16_t j = 0; j < m_ataNodes.size(); j++)
-  {
-    Ptr<Node> node = NodeList::GetNode(m_ataNodes[j]);
-    Ptr<MobilityModel> otherMob = node -> GetObject<MobilityModel>();
-    Vector otherPos = otherMob -> GetPosition();
-    otherPos.z = 0;
-    double dist = CalculateDistance(myPos, otherPos);
-
-    if (dist > 0  && dist < m_rangeAta && !visited[j] && !inQueue[j])
-    {   
-      toVisit.push(j);
-      inQueue[j] = 1;
-      //NS_LOG_DEBUG("Insert in queue " << j);
-    }
-   }
-
-   int cur;
-   while (!toVisit.empty()) 
-   { 
-     cur = toVisit.front();
-     toVisit.pop();
-     //NS_LOG_DEBUG ("Currently visiting " << cur);
-
-     Ptr<Node> node = NodeList::GetNode(m_ataNodes[cur]);
-     Ptr<MobilityModel> mob = node -> GetObject<MobilityModel>();
-     Vector pos = mob -> GetPosition();
-     pos.z = 0;
-
-    if (CalculateDistance(pos, m_bsPos) < m_rangeAta)
-      return true;
-
-    for (uint16_t j = 0; j < m_ataNodes.size(); j++)
-    {
-      if (j != cur)
-      {
-        Ptr<Node> node2 = NodeList::GetNode(m_ataNodes[j]);
-        Ptr<MobilityModel> otherMob = node2 -> GetObject<MobilityModel>();
-        Vector otherPos = otherMob -> GetPosition();
-        otherPos.z = 0;
-        double dist = CalculateDistance(pos, otherPos);
-
-        if (dist > 0  && dist < m_rangeAta && !visited[j] &&!inQueue[j])
-        {   
-          toVisit.push(j);
-          inQueue[j] = 1;
-          //NS_LOG_DEBUG("Insert in queue " << j);
-        }
-      }
-    }
-
-     visited[cur] = 1;
-   }
-
-   return false;
-
-}
-
-
 Vector
 VirtualSprings2dMobilityModel::ComputeAtaForce()
 {
@@ -359,7 +291,7 @@ VirtualSprings2dMobilityModel::ComputeAtaForce()
         fy += k*diff.y;
 
     }
-   }
+  }
 
   return Vector(fx,fy,0);
 }
@@ -407,9 +339,8 @@ VirtualSprings2dMobilityModel::ComputeAtgForce()
           }
 
           cnt > 1 ? kAtgPlus = 1 : kAtgPlus = 10;
-          //double kAtgPlus = 1.0 / (double)cnt;
 
-          NS_LOG_DEBUG ("K_ATG_PLUS = " << kAtgPlus);
+          //NS_LOG_DEBUG ("K_ATG_PLUS = " << kAtgPlus);
         }
 
         double disp = dist - m_l0Atg;
@@ -466,7 +397,7 @@ VirtualSprings2dMobilityModel::ComputeKatg()
     return 1;
   }
 
-  NS_LOG_DEBUG("kAtg = " << coveredNodes/maxNodesNeighbours);
+  //NS_LOG_DEBUG("kAtg = " << coveredNodes/maxNodesNeighbours);
 
   return coveredNodes/maxNodesNeighbours;
 }
