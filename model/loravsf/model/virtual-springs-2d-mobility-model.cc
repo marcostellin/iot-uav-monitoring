@@ -185,7 +185,8 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
     if (entry.distance != 0) 
     {
       m_hops = entry.distance;
-      m_persist = 3*(entry.distance - 1);
+      double rangeApprox = GetDistanceFromBs () / GetDistanceFromFurthestNeighbour ();
+      m_persist = 3*(entry.distance - 1) * (uint32_t)rangeApprox ;
 
       //Move according to forces if m_pause intervals have passed...
       if (m_pause == 0) 
@@ -455,6 +456,41 @@ VirtualSprings2dMobilityModel::ComputeKatg()
   return coveredNodes/maxNodesNeighbours;
 }
 
+double
+VirtualSprings2dMobilityModel::GetDistanceFromFurthestNeighbour ()
+{ 
+  double maxDist = 0.0;
+  Vector myPos = m_helper.GetCurrentPosition ();
+
+  for (uint16_t i = 0; i < m_neighbours.size (); i++)
+  {
+    Ptr<Node> node = NodeList::GetNode (m_neighbours[i]);
+    Ptr<MobilityModel> mob = node -> GetObject<MobilityModel> ();
+    Vector pos = mob -> GetPosition ();
+    pos.z = 0;
+
+    double dist = CalculateDistance (myPos, pos);
+
+    if (dist > maxDist)
+      maxDist = dist;
+
+  }
+
+  return maxDist;
+}
+
+double
+VirtualSprings2dMobilityModel::GetDistanceFromBs ()
+{ 
+  Vector myPos = m_helper.GetCurrentPosition ();
+  
+  double dist = CalculateDistance (myPos, m_bsPos);
+
+  return dist;
+}
+
+
+
 void
 VirtualSprings2dMobilityModel::SetOlsrRouting (Ptr<olsr::RoutingProtocol> routing)
 {
@@ -478,7 +514,6 @@ VirtualSprings2dMobilityModel::AddAtgNode(uint32_t id)
 {
   m_atgNodes.push_back(id); 
 }
-
 
 void
 VirtualSprings2dMobilityModel::DoWalk (Time delayLeft)

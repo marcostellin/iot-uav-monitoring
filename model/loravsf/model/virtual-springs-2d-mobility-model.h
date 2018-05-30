@@ -82,13 +82,15 @@ private:
   Vector ComputeAtgForce (void);
   int GetMaxNodesNeighbours(void);
   double ComputeKatg(void);
-  int ComputeNumGroudNodes(Ptr<Node> node);
-  int ComputeNumGroudNodes(void);
+  //int ComputeNumGroudNodes(Ptr<Node> node);
+  //int ComputeNumGroudNodes(void);
   bool HasPathToBs (Vector myPos);
   olsr::RoutingTableEntry HasPathToBs ();
   uint32_t SetPause (uint32_t hops);
   void SetNeighboursList (void);
   void SetEdsList (void);
+  double GetDistanceFromFurthestNeighbour (void);
+  double GetDistanceFromBs (void);
 
 
   virtual void DoDispose (void);
