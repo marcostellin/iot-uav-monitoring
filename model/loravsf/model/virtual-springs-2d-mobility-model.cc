@@ -18,6 +18,7 @@
  * Author: Marco Stellin
  */
 #include "virtual-springs-2d-mobility-model.h"
+#include "ns3/constant-position-mobility-model.h"
 #include "ns3/enum.h"
 #include "ns3/double.h"
 #include "ns3/string.h"
@@ -71,20 +72,32 @@ VirtualSprings2dMobilityModel::GetTypeId (void)
                    MakeDoubleAccessor (&VirtualSprings2dMobilityModel::m_kAta),
                    MakeDoubleChecker<double> ())
 
-    .AddAttribute ("l0Ata",
-                   "Natural length of AtA springs",
-                   DoubleValue (150),
-                   MakeDoubleAccessor (&VirtualSprings2dMobilityModel::m_l0Ata),
+    // .AddAttribute ("l0Ata",
+    //                "Natural length of AtA springs",
+    //                DoubleValue (150),
+    //                MakeDoubleAccessor (&VirtualSprings2dMobilityModel::m_l0Ata),
+    //                MakeDoubleChecker<double> ())
+
+    // .AddAttribute ("l0Atg",
+    //                "Natural length of AtG springs",
+    //                DoubleValue (20),
+    //                MakeDoubleAccessor (&VirtualSprings2dMobilityModel::m_l0Atg),
+    //                MakeDoubleChecker<double> ())
+
+    .AddAttribute ("LinkBudgetAta",
+                   "Required link budget for AtA links",
+                   DoubleValue (10.0),
+                   MakeDoubleAccessor (&VirtualSprings2dMobilityModel::m_lbReqAta),
                    MakeDoubleChecker<double> ())
 
-    .AddAttribute ("l0Atg",
-                   "Natural length of AtG springs",
-                   DoubleValue (20),
-                   MakeDoubleAccessor (&VirtualSprings2dMobilityModel::m_l0Atg),
+    .AddAttribute ("LinkBudgetAtg",
+                   "Required link budget for AtG links",
+                   DoubleValue (10.0),
+                   MakeDoubleAccessor (&VirtualSprings2dMobilityModel::m_lbReqAtg),
                    MakeDoubleChecker<double> ())
 
     .AddAttribute ("BsPosition", "Position of BS",
-                    VectorValue (Vector (200.0, 200.0, 0.0)), // ignored initial value.
+                    VectorValue (Vector (200.0, 200.0, 0.0)), 
                     MakeVectorAccessor (&VirtualSprings2dMobilityModel::m_bsPos),
                     MakeVectorChecker ())
 
@@ -93,10 +106,10 @@ VirtualSprings2dMobilityModel::GetTypeId (void)
                     MakeIpv4AddressAccessor (&VirtualSprings2dMobilityModel::m_bsAddr),
                     MakeIpv4AddressChecker ())
 
-    .AddAttribute ("KatgPlusMode", "K_ATG boost option",
-                    BooleanValue (true), // ignored initial value.
-                    MakeBooleanAccessor (&VirtualSprings2dMobilityModel::m_kAtgPlusMode),
-                    MakeBooleanChecker ())
+    // .AddAttribute ("KatgPlusMode", "K_ATG boost option",
+    //                 BooleanValue (true), // ignored initial value.
+    //                 MakeBooleanAccessor (&VirtualSprings2dMobilityModel::m_kAtgPlusMode),
+    //                 MakeBooleanChecker ())
 
     .AddTraceSource ("NodesInRange",
                      "Nodes in range have changed",
@@ -153,13 +166,13 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
   Vector forceAtg = VirtualSprings2dMobilityModel::ComputeAtgForce ();
 
   // //Scale forces
-  forceAta.x = forceAta.x / 10.0;
-  forceAta.y = forceAta.y / 10.0;
-  forceAta.z = forceAta.z / 10.0;
+  // forceAta.x = forceAta.x / 10.0;
+  // forceAta.y = forceAta.y / 10.0;
+  // forceAta.z = forceAta.z / 10.0;
 
-  forceAtg.x = forceAtg.x / 10.0;
-  forceAtg.y = forceAtg.y / 10.0;
-  forceAtg.z = forceAtg.z / 10.0;
+  // forceAtg.x = forceAtg.x / 10.0;
+  // forceAtg.y = forceAtg.y / 10.0;
+  // forceAtg.z = forceAtg.z / 10.0;
 
   Vector force = forceAta + forceAtg;
 
@@ -304,22 +317,6 @@ VirtualSprings2dMobilityModel::SetNeighboursList ()
   }
 }
 
-// void
-// VirtualSprings2dMobilityModel::SetEdsList ()
-// {
-//   std::map<uint32_t, Time> curNodes = m_monitor -> GetEdsList ();
-
-//   m_eds.clear ();
-
-//   for (std::map<uint32_t, Time>::iterator it = curNodes.begin(); it != curNodes.end (); ++it)
-//   {
-//     Time time = (*it).second;
-
-//     if (time + Seconds(20) > Simulator::Now () )
-//       m_eds.push_back ((*it).first);
-//   }
-// }
-
 void
 VirtualSprings2dMobilityModel::SetEdsList ()
 {
@@ -343,11 +340,14 @@ VirtualSprings2dMobilityModel::ComputeAtaForce()
     Ptr<Node> node = NodeList::GetNode(m_neighbours[j]);
     Ptr<MobilityModel> otherMob = node -> GetObject<MobilityModel>();
     Vector otherPos = otherMob -> GetPosition();
-    double dist = CalculateDistance(myPos, otherPos);
+    //double dist = CalculateDistance(myPos, otherPos);
+
+    double lb = m_estimator -> GetAtaLinkBudget ( Ptr<MobilityModel> (this), otherMob);
 
     double k_ata = m_kAta;
 
-    double disp = dist - m_l0Ata;
+    //double disp = dist - m_l0Ata;
+    double disp = m_lbReqAta - lb;
     Vector diff = otherPos - myPos;
     //double force = m_kAta*disp;
     double force = k_ata * disp;
@@ -379,37 +379,15 @@ VirtualSprings2dMobilityModel::ComputeAtgForce()
                  0
                );
 
-    double dist = CalculateDistance(myPos, pos);
-    double kAtgPlus = 1;
- 
-    // if (m_kAtgPlusMode)
-    // {
-    //   uint16_t cnt = 1;
+    Ptr<ConstantPositionMobilityModel> mob = CreateObject<ConstantPositionMobilityModel> ();
+    mob -> SetPosition (pos);
+    double lb = m_estimator -> GetAtgLinkBudget ( Ptr<MobilityModel> (this), mob);
 
-    //   for (uint16_t i = 0; i < m_neighbours.size (); i++)
-    //   {
-    //         Ptr<Node> ataNode = NodeList::GetNode(m_neighbours[i]);
-    //         Ptr<MobilityModel> ataMob = ataNode -> GetObject<MobilityModel> ();
-    //         Vector ataPos = ataMob -> GetPosition ();
-    //         ataPos.z = 0;
-
-    //         double ataDist = CalculateDistance (pos, ataPos);
-
-    //         if (ataDist < m_rangeAtg)
-    //         {
-    //           cnt++;
-    //         }
-
-    //       }
-
-    //       cnt > 1 ? kAtgPlus = 1 : kAtgPlus = 10;
-
-    //       //NS_LOG_DEBUG ("K_ATG_PLUS = " << kAtgPlus);
-    // }
-
-    double disp = dist - m_l0Atg;
+    //double dist = CalculateDistance(myPos, pos);
+    
+    double disp = m_lbReqAtg - lb;
     Vector diff = pos - myPos;
-    double force = ( kAtg * kAtgPlus ) * disp;
+    double force = kAtg * disp;
     double k = force/std::sqrt(diff.x*diff.x + diff.y*diff.y);
 
     fx += k*diff.x;
@@ -489,7 +467,11 @@ VirtualSprings2dMobilityModel::GetDistanceFromBs ()
   return dist;
 }
 
-
+void
+VirtualSprings2dMobilityModel::SetLinkBudgetEstimator (Ptr<LinkBudgetEstimator> estimator)
+{
+  m_estimator = estimator;
+}
 
 void
 VirtualSprings2dMobilityModel::SetOlsrRouting (Ptr<olsr::RoutingProtocol> routing)
@@ -559,3 +541,53 @@ VirtualSprings2dMobilityModel::DoGetVelocity (void) const
 
 
 } // namespace ns3
+
+
+//KATG PLUS
+/*
+    //double kAtgPlus = 1;
+    // if (m_kAtgPlusMode)
+    // {
+    //   uint16_t cnt = 1;
+
+    //   for (uint16_t i = 0; i < m_neighbours.size (); i++)
+    //   {
+    //         Ptr<Node> ataNode = NodeList::GetNode(m_neighbours[i]);
+    //         Ptr<MobilityModel> ataMob = ataNode -> GetObject<MobilityModel> ();
+    //         Vector ataPos = ataMob -> GetPosition ();
+    //         ataPos.z = 0;
+
+    //         double ataDist = CalculateDistance (pos, ataPos);
+
+    //         if (ataDist < m_rangeAtg)
+    //         {
+    //           cnt++;
+    //         }
+
+    //       }
+
+    //       cnt > 1 ? kAtgPlus = 1 : kAtgPlus = 10;
+
+    //       //NS_LOG_DEBUG ("K_ATG_PLUS = " << kAtgPlus);
+    // }
+    //double force = ( kAtg * kAtgPlus ) * disp;
+
+    //double disp = dist - m_l0Atg;
+
+*/
+
+// void
+// VirtualSprings2dMobilityModel::SetEdsList ()
+// {
+//   std::map<uint32_t, Time> curNodes = m_monitor -> GetEdsList ();
+
+//   m_eds.clear ();
+
+//   for (std::map<uint32_t, Time>::iterator it = curNodes.begin(); it != curNodes.end (); ++it)
+//   {
+//     Time time = (*it).second;
+
+//     if (time + Seconds(20) > Simulator::Now () )
+//       m_eds.push_back ((*it).first);
+//   }
+// }

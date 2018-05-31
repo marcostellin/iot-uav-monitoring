@@ -11,6 +11,7 @@ def build(bld):
     module.source = [
         'model/virtual-springs-2d-mobility-model.cc',
         'model/lora-eds-monitor.cc',
+        'model/link-budget-estimator.cc',
         ]
 
     module_test = bld.create_ns3_module_test_library('loravsf')
@@ -23,6 +24,7 @@ def build(bld):
     headers.source = [
         'model/virtual-springs-2d-mobility-model.h',
         'model/lora-eds-monitor.h',
+        'model/link-budget-estimator.h',
         ]
 
     # if bld.env.ENABLE_EXAMPLES:

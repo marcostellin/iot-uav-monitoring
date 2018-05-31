@@ -33,6 +33,7 @@
 #include "ns3/olsr-routing-protocol.h"
 #include "ns3/node-container.h"
 #include "ns3/lora-eds-monitor.h"
+#include "ns3/link-budget-estimator.h"
 
 namespace ns3 {
 
@@ -62,6 +63,7 @@ public:
   void AddAtgNode(uint32_t nodes);
   void SetOlsrRouting(Ptr<olsr::RoutingProtocol> routing);
   uint32_t GetCoveredEds (void);
+  void SetLinkBudgetEstimator (Ptr<LinkBudgetEstimator> estimator);
 
 private:
   /**
@@ -117,6 +119,8 @@ private:
   double m_l0Ata;
   double m_l0Atg;
   double m_tol;
+  double m_lbReqAta;
+  double m_lbReqAtg;
 
   bool m_kAtgPlusMode;
   
@@ -128,6 +132,9 @@ private:
 
   //LoraMonitor
   Ptr<LoraEdsMonitor> m_monitor;
+
+  //Link Budget Estimator
+  Ptr<LinkBudgetEstimator> m_estimator;
 
   Ptr<olsr::RoutingProtocol> m_routing;
 
