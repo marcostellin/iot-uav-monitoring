@@ -94,6 +94,9 @@ private:
   void SetEdsList (void);
   double GetDistanceFromFurthestNeighbour (void);
   double GetDistanceFromBs (void);
+  //bool HasOnlyAtaForces (uint32_t id, double tolerance);
+  uint32_t FindMostSimilarNode (void);
+  uint32_t NumSharedEds (uint32_t ataId);
 
 
   virtual void DoDispose (void);
@@ -124,6 +127,8 @@ private:
   double m_lbReqAtg;
 
   bool m_kAtgPlusMode;
+
+  uint32_t m_id;
   
   std::vector<uint32_t> m_ataNodes;
   std::vector<uint32_t> m_atgNodes;

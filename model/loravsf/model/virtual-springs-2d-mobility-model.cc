@@ -139,6 +139,9 @@ VirtualSprings2dMobilityModel::DoInitialize (void)
 
   m_monitor = Ptr<LoraEdsMonitor>( new LoraEdsMonitor (gwPhy));
 
+  //Set Node Id
+  m_id = node -> GetId ();
+
 
   DoInitializePrivate ();
   MobilityModel::DoInitialize ();
@@ -156,24 +159,15 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
   //Update Eds List
   VirtualSprings2dMobilityModel::SetEdsList ();
 
-  for (std::map<uint32_t, EdsEntry>::iterator it = m_eds.begin (); it != m_eds.end (); ++it)
-  {
-    NS_LOG_LOGIC ( it-> first << " " << it -> second.time );
-  }
+  // for (std::map<uint32_t, EdsEntry>::iterator it = m_eds.begin (); it != m_eds.end (); ++it)
+  // {
+  //   NS_LOG_LOGIC ( it-> first << " " << it -> second.time );
+  // }
 
   //Compute the direction of the movement
   Vector forceAta = VirtualSprings2dMobilityModel::ComputeAtaForce ();
   Vector forceAtg = VirtualSprings2dMobilityModel::ComputeAtgForce ();
-
-  // //Scale forces
-  // forceAta.x = forceAta.x / 10.0;
-  // forceAta.y = forceAta.y / 10.0;
-  // forceAta.z = forceAta.z / 10.0;
-
-  // forceAtg.x = forceAtg.x / 10.0;
-  // forceAtg.y = forceAtg.y / 10.0;
-  // forceAtg.z = forceAtg.z / 10.0;
-
+  
   Vector force = forceAta + forceAtg;
 
   NS_LOG_DEBUG ("AtG Force = " << forceAtg << ", AtA force = " << forceAta);
@@ -241,7 +235,19 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
       if (m_persist > 0)
       {
         NS_LOG_INFO ("Persit on route for " << m_persist << " intervals");
-        m_persist --;
+
+        if (!m_eds.empty ())
+        {
+          uint32_t simNode = FindMostSimilarNode ();
+
+          if (m_id > simNode)
+            m_persist = m_persist / 2;
+        }
+        else
+        {
+          m_persist --;
+        }
+        
         m_helper.SetVelocity(vector);
         m_helper.Unpause ();
       }  
@@ -409,8 +415,6 @@ VirtualSprings2dMobilityModel::ComputeAtgForce()
       }
 
       cnt > 1 ? kAtgPlus = 1 : kAtgPlus = 20;
-
-
     }
     
     double disp = m_lbReqAtg - lb;
@@ -493,6 +497,81 @@ VirtualSprings2dMobilityModel::GetDistanceFromBs ()
   double dist = CalculateDistance (myPos, m_bsPos);
 
   return dist;
+}
+
+// bool
+// VirtualSprings2dMobilityModel::HasOnlyAtaForces (uint32_t id, double tolerance)
+// {
+//   double maxShared = 0;
+//   uint32_t minId = 9999;
+
+//   for (uint16_t i = 0; i < m_neighbours.size (); i++)
+//   {
+//     uint32_t numShared = NumSharedEds ( m_neighbours[i] );
+
+//     if  (numShared == maxShared && m_neighbours[i] < minId)
+//       minId = m_neighbours[i];
+
+//     if (numShared > maxShared)
+//     {
+//       maxShared = numShared;
+//       minId = m_neighbours[i];
+//     }
+
+//     // if (numShared == maxShared && m_neighbours[i] < minId)
+//     //   minId = m_neighbours[i];
+//   }
+
+//   //NS_LOG_LOGIC ("Node " << id << " share " << maxShared << " EDs with node " << minId);
+
+//   if (maxShared / (double)m_eds.size () > tolerance && id < minId )
+//     return true;
+
+//   return false;
+
+// }
+
+
+uint32_t
+VirtualSprings2dMobilityModel::FindMostSimilarNode ()
+{
+  uint32_t maxShared = 0;
+  uint32_t maxId = 0;
+
+  for (uint16_t i = 0; i < m_neighbours.size (); i++)
+  {
+    uint32_t numShared = NumSharedEds ( m_neighbours[i] );
+
+    if  (numShared == maxShared && m_neighbours[i] > maxId)
+      maxId = m_neighbours[i];
+
+    if (numShared > maxShared)
+    {
+      maxShared = numShared;
+      maxId = m_neighbours[i];
+    }
+  }
+
+  return maxId;
+}
+
+uint32_t
+VirtualSprings2dMobilityModel::NumSharedEds (uint32_t ataId)
+{
+  Ptr<Node> node = NodeList::GetNode (ataId);
+  Ptr<VirtualSprings2dMobilityModel> mob = node -> GetObject<VirtualSprings2dMobilityModel> ();
+  std::map<uint32_t, EdsEntry> neighEdsList = mob -> GetEdsList ();
+
+  uint32_t counter = 0;
+  //NS_LOG_LOGIC ("Node " << ataId << " EDs: ");
+  for (std::map<uint32_t, EdsEntry>::iterator it = neighEdsList.begin (); it != neighEdsList.end (); ++it)
+  {
+    //NS_LOG_LOGIC (it -> first);
+    if ( m_eds.find (it -> first) != m_eds.end () )
+      counter ++;
+  }
+
+  return counter;
 }
 
 void
