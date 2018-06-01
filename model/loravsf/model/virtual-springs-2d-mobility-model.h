@@ -64,6 +64,7 @@ public:
   void SetOlsrRouting(Ptr<olsr::RoutingProtocol> routing);
   uint32_t GetCoveredEds (void);
   void SetLinkBudgetEstimator (Ptr<LinkBudgetEstimator> estimator);
+  std::map<uint32_t, EdsEntry> GetEdsList ();
 
 private:
   /**

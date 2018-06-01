@@ -106,10 +106,10 @@ VirtualSprings2dMobilityModel::GetTypeId (void)
                     MakeIpv4AddressAccessor (&VirtualSprings2dMobilityModel::m_bsAddr),
                     MakeIpv4AddressChecker ())
 
-    // .AddAttribute ("KatgPlusMode", "K_ATG boost option",
-    //                 BooleanValue (true), // ignored initial value.
-    //                 MakeBooleanAccessor (&VirtualSprings2dMobilityModel::m_kAtgPlusMode),
-    //                 MakeBooleanChecker ())
+    .AddAttribute ("KatgPlusMode", "K_ATG boost option",
+                    BooleanValue (true), // ignored initial value.
+                    MakeBooleanAccessor (&VirtualSprings2dMobilityModel::m_kAtgPlusMode),
+                    MakeBooleanChecker ())
 
     .AddTraceSource ("NodesInRange",
                      "Nodes in range have changed",
@@ -384,10 +384,38 @@ VirtualSprings2dMobilityModel::ComputeAtgForce()
     double lb = m_estimator -> GetAtgLinkBudget ( Ptr<MobilityModel> (this), mob);
 
     //double dist = CalculateDistance(myPos, pos);
+
+    double kAtgPlus = 1;
+    
+    if (m_kAtgPlusMode)
+    {
+      uint16_t cnt = 1;
+
+      for (uint16_t i = 0; i < m_neighbours.size (); i++)
+      {
+        Ptr<Node> ataNode = NodeList::GetNode(m_neighbours[i]);
+        Ptr<VirtualSprings2dMobilityModel> ataMob = ataNode -> GetObject<VirtualSprings2dMobilityModel> ();
+        std::map<uint32_t, EdsEntry> otherList = ataMob -> GetEdsList ();
+
+        //otherList.insert (m_eds.begin (), m_eds.end ());
+
+        std::map<uint32_t, EdsEntry>::iterator oIt;
+        oIt = otherList.find ( it -> first );
+
+        if ( oIt != otherList.end () )
+        {
+          cnt ++;
+        }
+      }
+
+      cnt > 1 ? kAtgPlus = 1 : kAtgPlus = 20;
+
+
+    }
     
     double disp = m_lbReqAtg - lb;
     Vector diff = pos - myPos;
-    double force = kAtg * disp;
+    double force = (kAtg * kAtgPlus) * disp;
     double k = force/std::sqrt(diff.x*diff.x + diff.y*diff.y);
 
     fx += k*diff.x;
@@ -483,6 +511,12 @@ uint32_t
 VirtualSprings2dMobilityModel::GetCoveredEds ()
 {
   return m_eds.size ();
+}
+
+std::map<uint32_t, EdsEntry>
+VirtualSprings2dMobilityModel::GetEdsList ()
+{
+  return m_monitor -> GetEdsList (Seconds (20));
 }
 
 void
