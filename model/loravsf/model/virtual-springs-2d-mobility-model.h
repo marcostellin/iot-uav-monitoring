@@ -50,6 +50,16 @@ namespace ns3 {
  * and speed. This model is often identified as a brownian motion
  * model.
  */
+
+struct Seed
+{
+  Seed (): center (Vector ()), expires (0) {}
+
+  Vector center;
+  uint16_t expires;
+};
+
+
 class VirtualSprings2dMobilityModel : public MobilityModel 
 {
 public:
@@ -57,6 +67,7 @@ public:
    * Register this type with the TypeId system.
    * \return the object TypeId
    */
+  VirtualSprings2dMobilityModel ();
   static TypeId GetTypeId (void);
   typedef void (* TracedCallback)(const std::vector<uint32_t> &vector);
   void AddAtaNode(uint32_t nodes);
@@ -65,6 +76,7 @@ public:
   uint32_t GetCoveredEds (void);
   void SetLinkBudgetEstimator (Ptr<LinkBudgetEstimator> estimator);
   std::map<uint32_t, EdsEntry> GetEdsList ();
+  void AddSeed (Seed seed);
 
 private:
   /**
@@ -85,8 +97,6 @@ private:
   Vector ComputeAtgForce (void);
   int GetMaxNodesNeighbours(void);
   double ComputeKatg(void);
-  //int ComputeNumGroudNodes(Ptr<Node> node);
-  //int ComputeNumGroudNodes(void);
   bool HasPathToBs (Vector myPos);
   olsr::RoutingTableEntry HasPathToBs ();
   uint32_t SetPause (uint32_t hops);
@@ -94,9 +104,12 @@ private:
   void SetEdsList (void);
   double GetDistanceFromFurthestNeighbour (void);
   double GetDistanceFromBs (void);
-  //bool HasOnlyAtaForces (uint32_t id, double tolerance);
   uint32_t FindMostSimilarNode (void);
   uint32_t NumSharedEds (uint32_t ataId);
+  Vector ComputeCenterMassEds ();
+  void SendSeed ();
+  Vector ComputeSeedForces ();
+  void UpdateRangeApprox ();
 
 
   virtual void DoDispose (void);
@@ -105,36 +118,39 @@ private:
   virtual void DoSetPosition (const Vector &position);
   virtual Vector DoGetVelocity (void) const;
 
+  //CONSTANTS
+  const double M_PERC_SHARED;
+  const double M_SEC_RETAIN_EDS;
+
   ConstantVelocityHelper m_helper; //!< helper for this object
   EventId m_event; //!< stored event ID 
   Time m_modeTime; //!< Change current direction and speed after this delay
 
-  Vector m_bsPos;
-  Ipv4Address m_bsAddr;
-  Vector m_prevPos;
-  uint32_t m_pause;
-  uint32_t m_hops;
-  uint32_t m_persist;
+  Vector m_bsPos;  //!< Stores the position of the BS
+  Ipv4Address m_bsAddr; //!< Stores the IP address of the BS
+  uint32_t m_pause; //<! stores the number of pause intervals
+  uint32_t m_hops;  //<! store the number of hops from the BS of the current or last iteration
+  uint32_t m_persist; //<! store the number of intervals the node should go on even if no connectivity to BS
 
   double m_speed; //!< Speed of aerial nodes
   double m_kAta; //<! stifness of aerial springs
-  double m_rangeAta; //<! tx range of AtA communications
-  double m_rangeAtg; //<! tx range of ArG communications
-  double m_l0Ata;
-  double m_l0Atg;
-  double m_tol;
-  double m_lbReqAta;
-  double m_lbReqAtg;
+  double m_tol;  //<! minimum force module to cause a movement
+  double m_lbReqAta; //<! required LB for AtA links
+  double m_lbReqAtg; //<! required LB for AtG links
+  double m_rangeApprox; //<! store the approximate range of transmission
 
-  bool m_kAtgPlusMode;
+  bool m_kAtgPlusMode; //<! if true give more priority to nodes exclusively covered by the current UAV
 
-  uint32_t m_id;
+  uint32_t m_id;  //<! id of the UAV
   
-  std::vector<uint32_t> m_ataNodes;
-  std::vector<uint32_t> m_atgNodes;
-  std::vector<uint32_t> m_neighbours;
-  std::map<uint32_t, EdsEntry> m_eds;
-  //std::vector<int> m_nodesCovered;
+  std::vector<uint32_t> m_ataNodes; //<! List of IDs of all UAVs
+  std::vector<uint32_t> m_atgNodes; //<! List of IDs of all EDs
+  std::vector<uint32_t> m_neighbours; //<! Store current one hop neighbours of current node
+  std::vector<uint32_t> m_allNeighbours; //<! Store one hop neighbours + UAVs covering at least one ED;
+  std::map<uint32_t, EdsEntry> m_eds; //<! List of currently covered EDs;
+
+  std::list<Seed> m_seeds;
+  Seed m_seed; 
 
   //LoraMonitor
   Ptr<LoraEdsMonitor> m_monitor;
