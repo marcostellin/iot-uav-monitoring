@@ -35,6 +35,8 @@
 
 #include "ns3/udp-relay-server-helper.h"
 
+#include "ns3/link-budget-estimator.h"
+
 #include <algorithm>
 #include <ctime>
 #include <iostream>
@@ -52,8 +54,8 @@ std::string filename;
 
 std::string phyMode ("ErpOfdmRate12Mbps");
 uint32_t numTeams = 3;
-uint32_t numUavs = 8;
-uint32_t numMembers = 10;
+uint32_t numUavs = 10;
+uint32_t numMembers = 20;
 double runtime = 2000;
 
 //NodeContainer endDevices;
@@ -332,16 +334,19 @@ main (int argc, char* argv[]){
   //LogComponentEnable ("EndDeviceLoraPhy", LOG_LEVEL_INFO);
   //LogComponentEnable ("GatewayLoraPhy", LOG_LEVEL_INFO);
   //LogComponentEnable ("GatewayLoraMac", LOG_LEVEL_INFO);
-  //LogComponentEnable ("VirtualSprings2d", LOG_LEVEL_DEBUG);
-  LogComponentEnable ("VirtualSprings2d", LOG_INFO);
-  //LogComponentEnable ("VsfExp3", LOG_LEVEL_INFO);
+  //LogComponentEnable ("VirtualSprings2d", LOG_LEVEL_ALL);
+  LogComponentEnable ("VirtualSprings2d", LOG_LOGIC);
+  //LogComponentEnable ("VirtualSprings2d", LOG_INFO);
+  //LogComponentEnable ("VirtualSprings2d", LOG_DEBUG);
+  //LogComponentEnable ("LinkBudgetEstimator", LOG_DEBUG);
+  //LogComponentEnable ("VsfExp3", LOG_LEVEL_ALL);
 
 	LogComponentEnableAll (LOG_PREFIX_FUNC);
   LogComponentEnableAll (LOG_PREFIX_NODE);
   LogComponentEnableAll (LOG_PREFIX_TIME);
 
   RngSeedManager::SetSeed (3);  // Changes seed from default of 1 to 3
-  RngSeedManager::SetRun (56);  //Best seed 10
+  RngSeedManager::SetRun (58);  //Best seed 56 //58 is difficult!
   
   /***********************
   * Set params           *
@@ -378,6 +383,10 @@ main (int argc, char* argv[]){
   Ptr<PropagationDelayModel> delay = CreateObject<ConstantSpeedPropagationDelayModel> ();
 
   Ptr<LoraChannel> channel = CreateObject<LoraChannel> (medLoss, delay);
+
+  //Friis Loss Model
+  Ptr<FriisPropagationLossModel> friisLoss = CreateObject<FriisPropagationLossModel> ();
+  friisLoss -> SetFrequency (2.4e+09);
 
   /************************
   *  Create the helpers  *
@@ -548,13 +557,8 @@ main (int argc, char* argv[]){
   ataNodes.Create (numUavs);
 
   Vector bsPos = Vector(200,200,0);
+  
   //Assign mobility model to nodes
-
-  // Ptr<ListPositionAllocator> nodesAllocator = CreateObject<ListPositionAllocator> ();
-  // nodesAllocator->Add(Vector(200,300,100));
-  // nodesAllocator->Add(Vector(100,100,100));
-  // nodesAllocator->Add(Vector(200,100,100));
-  // nodesAllocator->Add(Vector(100,200,100));
 
   Ptr<UniformDiscPositionAllocator> nodesAllocator = CreateObject<UniformDiscPositionAllocator> ();
   nodesAllocator -> SetRho (50);
@@ -564,14 +568,16 @@ main (int argc, char* argv[]){
   mobility.SetPositionAllocator (nodesAllocator);
   mobility.SetMobilityModel ("ns3::VirtualSprings2dMobilityModel", 
   																	"Time", TimeValue(Seconds(10)),
-  																	"Tolerance", DoubleValue(10),
+  																	"Tolerance", DoubleValue(5),
                                     "Speed", DoubleValue (1.5),
                                     "BsPosition", VectorValue(bsPos),
-                                    "TxRangeAta", DoubleValue(500),
-                                    "TxRangeAtg", DoubleValue (150),
-                                    "l0Atg", DoubleValue (10),
-                                    "l0Ata", DoubleValue(350),
-                                    "kAta", DoubleValue (1)
+                                    //"TxRangeAta", DoubleValue(500),
+                                    //"TxRangeAtg", DoubleValue (150),
+                                    //"l0Atg", DoubleValue (10),
+                                    //"l0Ata", DoubleValue(350),
+                                    "LinkBudgetAta", DoubleValue (20),  //20
+                                    "LinkBudgetAtg", DoubleValue (15),
+                                    "kAta", DoubleValue (3)  //5
                                     //"KatgPlusMode", BooleanValue (false)
                                     );
   mobility.Install (ataNodes);
@@ -634,13 +640,11 @@ main (int argc, char* argv[]){
 
   NetDeviceContainer wifiDevices = wifi.Install (wifiPhy, wifiMac, wifiNodes);
 
-
   /************************
   * Set Routing           *
   ************************/
   
   OlsrHelper olsr;
-  //OlsrHelper aodv;
   InternetStackHelper stack;
   stack.SetRoutingHelper (olsr);
   stack.Install (wifiNodes);
@@ -664,6 +668,27 @@ main (int argc, char* argv[]){
   NS_LOG_INFO ("Assign IP Addresses to WiFi nodes...");
   ipv4.SetBase ("10.1.1.0", "255.255.255.0");
   Ipv4InterfaceContainer i = ipv4.Assign (wifiDevices);
+
+
+  /******************************
+  * Set Link Budget Estimator   *
+  ******************************/
+
+  Ptr<LinkBudgetEstimator> est = CreateObject<LinkBudgetEstimator> ();
+  est -> SetAttribute ("TxPowerAtg", DoubleValue (14.0));
+  est -> SetAttribute ("TxPowerAta", DoubleValue (16.0206));
+  est -> SetAttribute ("SensitivityAta", DoubleValue (-96));
+  est -> SetAttribute ("SensitivityAtg", DoubleValue (-130));
+  est -> SetAtgModel (medLoss);
+  est -> SetAtaModel (friisLoss);
+
+  for (uint16_t i = 0; i < ataNodes.GetN (); i++)
+  {
+  	Ptr<Node> node = ataNodes.Get(i);
+  	Ptr<VirtualSprings2dMobilityModel> mob = node -> GetObject<VirtualSprings2dMobilityModel> ();
+  	mob -> SetLinkBudgetEstimator (est);
+  }
+
 
   /************************
   * Install applications  *
@@ -750,7 +775,6 @@ main (int argc, char* argv[]){
   }
 
   macHelper.SetSpreadingFactorsUp (endDevices, ataNodes, channel);
-  
    
   /********************
   * RUN SIMULATION    *
