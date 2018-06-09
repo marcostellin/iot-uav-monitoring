@@ -69,14 +69,15 @@ public:
    */
   VirtualSprings2dMobilityModel ();
   static TypeId GetTypeId (void);
+
   typedef void (* TracedCallback)(const std::vector<uint32_t> &vector);
-  void AddAtaNode(uint32_t nodes);
-  void AddAtgNode(uint32_t nodes);
-  void SetOlsrRouting(Ptr<olsr::RoutingProtocol> routing);
-  uint32_t GetCoveredEds (void);
-  void SetLinkBudgetEstimator (Ptr<LinkBudgetEstimator> estimator);
-  std::map<uint32_t, EdsEntry> GetEdsList ();
-  void AddSeed (Seed seed);
+
+  void                         AddAtaNode             (uint32_t nodes);
+  void                         AddAtgNode             (uint32_t nodes);
+  void                         SetOlsrRouting         (Ptr<olsr::RoutingProtocol> routing);
+  uint32_t                     GetCoveredEds          (void);
+  void                         SetLinkBudgetEstimator (Ptr<LinkBudgetEstimator> estimator);
+  std::map<uint32_t, EdsEntry> GetEdsList             (void);
 
 private:
   /**
@@ -92,24 +93,25 @@ private:
   /**
    * Perform initialization of the object before MobilityModel::DoInitialize ()
    */
-  void DoInitializePrivate (void);
-  Vector ComputeAtaForce (void);
-  Vector ComputeAtgForce (void);
-  int GetMaxNodesNeighbours(void);
-  double ComputeKatg(void);
-  bool HasPathToBs (Vector myPos);
-  olsr::RoutingTableEntry HasPathToBs ();
-  uint32_t SetPause (uint32_t hops);
-  void SetNeighboursList (void);
-  void SetEdsList (void);
-  double GetDistanceFromFurthestNeighbour (void);
-  double GetDistanceFromBs (void);
-  uint32_t FindMostSimilarNode (void);
-  uint32_t NumSharedEds (uint32_t ataId);
-  Vector ComputeCenterMassEds ();
-  void SendSeed ();
-  Vector ComputeSeedForces ();
+  void     DoInitializePrivate    (void);
+
+  Vector   ComputeAtaForce        (void);
+  Vector   ComputeAtgForce        (void);
+  int      GetMaxNodesNeighbours  (void);
+  double   ComputeKatg            (void);
+  uint32_t NumSharedEds           (uint32_t ataId);
+  double   ComputeKata            (Ptr<Node> ataNode);
+
+  olsr::RoutingTableEntry HasPathToBs                      (void);
+  uint32_t                SetPause                         (uint32_t hops);
+  void                    SetNeighboursList                (void);
+  void                    SetEdsList                       (void);
+  double                  GetDistanceFromFurthestNeighbour (void);
+  double                  GetDistanceFromBs                (void);
+  uint32_t                FindMostSimilarNode              (void);
+  
   void UpdateRangeApprox ();
+  
 
 
   virtual void DoDispose (void);
@@ -121,6 +123,8 @@ private:
   //CONSTANTS
   const double M_PERC_SHARED;
   const double M_SEC_RETAIN_EDS;
+  const double M_MAX_PAUSE;
+  const uint32_t M_KATG_PLUS;
 
   ConstantVelocityHelper m_helper; //!< helper for this object
   EventId m_event; //!< stored event ID 
@@ -140,6 +144,7 @@ private:
   double m_rangeApprox; //<! store the approximate range of transmission
 
   bool m_kAtgPlusMode; //<! if true give more priority to nodes exclusively covered by the current UAV
+
 
   uint32_t m_id;  //<! id of the UAV
   

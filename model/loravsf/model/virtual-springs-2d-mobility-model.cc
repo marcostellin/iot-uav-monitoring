@@ -108,7 +108,7 @@ VirtualSprings2dMobilityModel::GetTypeId (void)
   return tid;
 }
 
-VirtualSprings2dMobilityModel::VirtualSprings2dMobilityModel () : M_PERC_SHARED(0.5), M_SEC_RETAIN_EDS (20.0)
+VirtualSprings2dMobilityModel::VirtualSprings2dMobilityModel () : M_PERC_SHARED(0.5), M_SEC_RETAIN_EDS (20.0), M_MAX_PAUSE (30.0), M_KATG_PLUS (20)
 {
   NS_LOG_FUNCTION (this);
 }
@@ -207,7 +207,7 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
       //Go back and try to recover connectivity...
       if (m_persist == 0)
       {
-        NS_LOG_INFO ("Not in range of BS. Going Back!");
+        NS_LOG_INFO ("Going Back!");
         Vector curPos = m_helper.GetCurrentPosition ();
         Vector diff = m_bsPos - curPos;
         double h = speed*2/std::sqrt(diff.x*diff.x + diff.y*diff.y);
@@ -215,7 +215,6 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
                     h*diff.y,
                     0.0);
 
-        NS_LOG_INFO ("m_hops = " << m_hops);
         m_pause = VirtualSprings2dMobilityModel::SetPause(m_hops);
 
         m_helper.SetVelocity(vec);
@@ -291,68 +290,7 @@ VirtualSprings2dMobilityModel::UpdateRangeApprox ()
 
 }
 
-void
-VirtualSprings2dMobilityModel::AddSeed (Seed seed)
-{
-  m_seeds.push_back (seed);
-}
-
-void
-VirtualSprings2dMobilityModel::SendSeed ()
-{
-  std::vector<ns3::olsr::RoutingTableEntry> entries = m_routing -> ns3::olsr::RoutingProtocol::GetRoutingTableEntries ();
-
-  for (uint16_t i = 0; i < entries.size(); i++)
-  {
-    for (uint16_t j = 0; j < m_ataNodes.size (); j++)
-    {
-        Ptr<Node> node = NodeList::GetNode(m_ataNodes[j]);
-        Ptr<VirtualSprings2dMobilityModel> mob = node -> GetObject<VirtualSprings2dMobilityModel> ();
-        Ptr<Ipv4> ipv4 = node->GetObject<Ipv4> (); 
-        Ipv4Address addr = ipv4->GetAddress (1, 0).GetLocal (); 
-
-        if (addr.IsEqual (entries[i].destAddr) && entries[i].distance == 1)
-        {
-          mob -> AddSeed (m_seed);
-          NS_LOG_LOGIC ("Sent seed to " << node -> GetId ());
-        }
-
-    }
-  }
-
-  m_seeds.push_back (m_seed);
-  m_seed = Seed ();
-}
-
-Vector
-VirtualSprings2dMobilityModel::ComputeCenterMassEds ()
-{ 
-  Vector res;
-
-  for (std::map<uint32_t, EdsEntry>::iterator it = m_eds.begin (); it != m_eds.end (); ++it )
-  {
-    res.x = res.x + (*it).second.x;
-    res.y = res.y + (*it).second.y;
-  }
-
-  res.x = res.x / m_eds.size ();
-  res.y = res.y / m_eds.size ();
-
-  return res;
-}
-
-// uint32_t
-// VirtualSprings2dMobilityModel::SetPause (uint32_t hops)
-// {
-//   if (hops > 0)
-//   {
-//     double pause = 100.0 * std::exp (-m_modeTime.GetSeconds () / 10.0) /(std::pow(hops, 3)) + 1;
-//     NS_LOG_INFO ("Stop for " << (uint32_t)pause << " intervals");
-//     return (uint32_t)pause;
-//   }
-
-//   return 0;
-// }
+// 
 
 uint32_t
 VirtualSprings2dMobilityModel::SetPause (uint32_t hops)
@@ -360,7 +298,7 @@ VirtualSprings2dMobilityModel::SetPause (uint32_t hops)
   if (hops > 0)
   {
     //double pause = 100.0 * std::exp (-m_modeTime.GetSeconds () / 10.0) /(std::pow(hops, 3)) + 1;
-    double pause = 30 * m_rangeApprox / GetDistanceFromBs ();
+    double pause = M_MAX_PAUSE * m_rangeApprox / GetDistanceFromBs ();
     NS_LOG_INFO ("Stop for " << (uint32_t)pause << " intervals");
     return (uint32_t)pause;
   }
@@ -388,7 +326,7 @@ VirtualSprings2dMobilityModel::SetNeighboursList () //Associate immediately ip t
 
         if (addr.IsEqual (entries[i].destAddr))
         {
-          //if (mob -> GetEdsList ().size () > 0 || entries[i].distance == 1)
+          if (mob -> GetEdsList ().size () > 0 || entries[i].distance == 1)
             m_allNeighbours.push_back (node -> GetId());
 
           if (entries[i].distance == 1)
@@ -411,47 +349,6 @@ VirtualSprings2dMobilityModel::SetEdsList ()
 
 
 Vector
-VirtualSprings2dMobilityModel::ComputeSeedForces ()
-{
-  Vector pos = m_helper.GetCurrentPosition ();
-
-  double fx = 0;
-  double fy = 0;
-
-  double k_seed = 50;
-
-  for (std::list<Seed>::iterator it = m_seeds.begin (); it != m_seeds.end (); ++it)
-  { 
-    Seed seed = (*it);
-    if ( seed.expires != 0 )
-    {
-
-      Vector seedPos = seed.center;
-      Ptr<ConstantPositionMobilityModel> mob = CreateObject<ConstantPositionMobilityModel> ();
-      mob -> SetPosition (seedPos);
-      double lb = m_estimator -> GetAtgLinkBudget ( Ptr<MobilityModel> (this), mob);
-
-      double disp = m_lbReqAtg - lb;
-      Vector diff = seedPos - pos;
-      double force = k_seed * disp;
-      double k = force/std::sqrt(diff.x*diff.x + diff.y*diff.y);
-
-      fx += k*diff.x;
-      fy += k*diff.y;
-
-      (*it).expires--;
-
-      NS_LOG_LOGIC ("Computing seed force to " << seedPos << " = " << Vector (fx, fy, 0));
-    }
-
-  }
-
-  return Vector(fx,fy,0);
-
-}
-
-
-Vector
 VirtualSprings2dMobilityModel::ComputeAtaForce()
 {
   Vector myPos = m_helper.GetCurrentPosition ();
@@ -464,16 +361,14 @@ VirtualSprings2dMobilityModel::ComputeAtaForce()
     Ptr<Node> node = NodeList::GetNode(m_neighbours[j]);
     Ptr<MobilityModel> otherMob = node -> GetObject<MobilityModel>();
     Vector otherPos = otherMob -> GetPosition();
-    //double dist = CalculateDistance(myPos, otherPos);
 
     double lb = m_estimator -> GetAtaLinkBudget ( Ptr<MobilityModel> (this), otherMob);
 
-    double k_ata = m_kAta;
+    //double k_ata = m_kAta;
+    double k_ata = VirtualSprings2dMobilityModel::ComputeKata (node);
 
-    //double disp = dist - m_l0Ata;
     double disp = m_lbReqAta - lb;
     Vector diff = otherPos - myPos;
-    //double force = m_kAta*disp;
     double force = k_ata * disp;
     double k = force/std::sqrt(diff.x*diff.x + diff.y*diff.y);
 
@@ -532,7 +427,7 @@ VirtualSprings2dMobilityModel::ComputeAtgForce()
         }
       }
 
-      cnt > 1 ? kAtgPlus = 1 : kAtgPlus = 20;
+      cnt > 1 ? kAtgPlus = 1 : kAtgPlus = M_KATG_PLUS;
     }
     
     double disp = m_lbReqAtg - lb;
@@ -569,6 +464,21 @@ VirtualSprings2dMobilityModel::GetMaxNodesNeighbours()
 }
 
 double
+VirtualSprings2dMobilityModel::ComputeKata(Ptr<Node> ataNode)
+{
+  Ptr<VirtualSprings2dMobilityModel> ataMob = ataNode -> GetObject<VirtualSprings2dMobilityModel> ();
+  std::map<uint32_t, EdsEntry> edsList = ataMob -> GetEdsList ();
+
+  if (edsList.size () > 0 && m_rangeApprox > 0)
+  {
+    double rangeRatio = GetDistanceFromBs () / m_rangeApprox;
+    return m_kAta + rangeRatio;
+  }
+  else
+    return m_kAta;
+}
+
+double
 VirtualSprings2dMobilityModel::ComputeKatg()
 {
   double coveredNodes = m_eds.size ();
@@ -578,9 +488,7 @@ VirtualSprings2dMobilityModel::ComputeKatg()
   {
     return 1;
   }
-
-  //NS_LOG_DEBUG("kAtg = " << coveredNodes/maxNodesNeighbours);
-
+  
   return coveredNodes/maxNodesNeighbours;
 }
 
@@ -967,4 +875,107 @@ VirtualSprings2dMobilityModel::DoGetVelocity (void) const
 
 //   DoWalk (delayLeft);
   
+// }
+
+//void
+// VirtualSprings2dMobilityModel::AddSeed (Seed seed)
+// {
+//   m_seeds.push_back (seed);
+// }
+
+// void
+// VirtualSprings2dMobilityModel::SendSeed ()
+// {
+//   std::vector<ns3::olsr::RoutingTableEntry> entries = m_routing -> ns3::olsr::RoutingProtocol::GetRoutingTableEntries ();
+
+//   for (uint16_t i = 0; i < entries.size(); i++)
+//   {
+//     for (uint16_t j = 0; j < m_ataNodes.size (); j++)
+//     {
+//         Ptr<Node> node = NodeList::GetNode(m_ataNodes[j]);
+//         Ptr<VirtualSprings2dMobilityModel> mob = node -> GetObject<VirtualSprings2dMobilityModel> ();
+//         Ptr<Ipv4> ipv4 = node->GetObject<Ipv4> (); 
+//         Ipv4Address addr = ipv4->GetAddress (1, 0).GetLocal (); 
+
+//         if (addr.IsEqual (entries[i].destAddr) && entries[i].distance == 1)
+//         {
+//           mob -> AddSeed (m_seed);
+//           NS_LOG_LOGIC ("Sent seed to " << node -> GetId ());
+//         }
+
+//     }
+//   }
+
+//   m_seeds.push_back (m_seed);
+//   m_seed = Seed ();
+// }
+
+// Vector
+// VirtualSprings2dMobilityModel::ComputeCenterMassEds ()
+// { 
+//   Vector res;
+
+//   for (std::map<uint32_t, EdsEntry>::iterator it = m_eds.begin (); it != m_eds.end (); ++it )
+//   {
+//     res.x = res.x + (*it).second.x;
+//     res.y = res.y + (*it).second.y;
+//   }
+
+//   res.x = res.x / m_eds.size ();
+//   res.y = res.y / m_eds.size ();
+
+//   return res;
+// }
+
+// // uint32_t
+// // VirtualSprings2dMobilityModel::SetPause (uint32_t hops)
+// // {
+// //   if (hops > 0)
+// //   {
+// //     double pause = 100.0 * std::exp (-m_modeTime.GetSeconds () / 10.0) /(std::pow(hops, 3)) + 1;
+// //     NS_LOG_INFO ("Stop for " << (uint32_t)pause << " intervals");
+// //     return (uint32_t)pause;
+// //   }
+
+// //   return 0;
+// // }
+
+// Vector
+// VirtualSprings2dMobilityModel::ComputeSeedForces ()
+// {
+//   Vector pos = m_helper.GetCurrentPosition ();
+
+//   double fx = 0;
+//   double fy = 0;
+
+//   double k_seed = 50;
+
+//   for (std::list<Seed>::iterator it = m_seeds.begin (); it != m_seeds.end (); ++it)
+//   { 
+//     Seed seed = (*it);
+//     if ( seed.expires != 0 )
+//     {
+
+//       Vector seedPos = seed.center;
+//       Ptr<ConstantPositionMobilityModel> mob = CreateObject<ConstantPositionMobilityModel> ();
+//       mob -> SetPosition (seedPos);
+//       double lb = m_estimator -> GetAtgLinkBudget ( Ptr<MobilityModel> (this), mob);
+
+//       double disp = m_lbReqAtg - lb;
+//       Vector diff = seedPos - pos;
+//       double force = k_seed * disp;
+//       double k = force/std::sqrt(diff.x*diff.x + diff.y*diff.y);
+
+//       fx += k*diff.x;
+//       fy += k*diff.y;
+
+//       (*it).expires--;
+
+//       NS_LOG_LOGIC ("Computing seed force to " << seedPos << " = " << Vector (fx, fy, 0));
+//     }
+
+//   }
+
+//   return Vector(fx,fy,0);
+
 // }
