@@ -110,7 +110,9 @@ private:
   double                  GetDistanceFromBs                (void);
   uint32_t                FindMostSimilarNode              (void);
   
-  void UpdateRangeApprox ();
+  void                    UpdateRangeApprox (void);
+
+  void                    CheckConnectivity (void);
   
 
 
@@ -125,6 +127,7 @@ private:
   const double M_SEC_RETAIN_EDS;
   const double M_MAX_PAUSE;
   const uint32_t M_KATG_PLUS;
+  const double M_SEC_CHECK_CONN;
 
   ConstantVelocityHelper m_helper; //!< helper for this object
   EventId m_event; //!< stored event ID 
@@ -167,6 +170,7 @@ private:
 
   //Trace sources
   ns3::TracedCallback<const std::vector<int> &> m_nodesInRangeTrace;
+  ns3::TracedCallback<uint32_t, Time> m_disconnectedTimeTrace;
 };
 
 

@@ -102,15 +102,32 @@ VirtualSprings2dMobilityModel::GetTypeId (void)
     .AddTraceSource ("NodesInRange",
                      "Nodes in range have changed",
                       MakeTraceSourceAccessor (&VirtualSprings2dMobilityModel::m_nodesInRangeTrace),
-                     "ns3::VirtualSprings2dMobilityModel::TracedCallback");         
+                     "ns3::VirtualSprings2dMobilityModel::TracedCallback")
+
+    .AddTraceSource ("ConnectionState",
+                     "Fired when connection to BS lost",
+                      MakeTraceSourceAccessor (&VirtualSprings2dMobilityModel::m_disconnectedTimeTrace),
+                     "ns3::VirtualSprings2dMobilityModel::TracedCallback");           
                    
                    
   return tid;
 }
 
-VirtualSprings2dMobilityModel::VirtualSprings2dMobilityModel () : M_PERC_SHARED(0.5), M_SEC_RETAIN_EDS (20.0), M_MAX_PAUSE (30.0), M_KATG_PLUS (20)
+VirtualSprings2dMobilityModel::VirtualSprings2dMobilityModel () : M_PERC_SHARED(0.5), M_SEC_RETAIN_EDS (20.0), M_MAX_PAUSE (30.0), M_KATG_PLUS (20), M_SEC_CHECK_CONN (1.0)
 {
   NS_LOG_FUNCTION (this);
+}
+
+void
+VirtualSprings2dMobilityModel::CheckConnectivity ()
+{
+  olsr::RoutingTableEntry entry = VirtualSprings2dMobilityModel::HasPathToBs();
+
+  if (entry.distance == 0)
+    m_disconnectedTimeTrace (m_id, Seconds(M_SEC_CHECK_CONN));
+
+  Simulator::Schedule (Seconds(M_SEC_CHECK_CONN), &VirtualSprings2dMobilityModel::CheckConnectivity, this);
+
 }
 
 void
@@ -135,6 +152,8 @@ VirtualSprings2dMobilityModel::DoInitialize (void)
 
   //Set Node Id
   m_id = node -> GetId ();
+
+  Simulator::ScheduleNow (&VirtualSprings2dMobilityModel::CheckConnectivity, this);
 
 
   DoInitializePrivate ();
@@ -488,7 +507,7 @@ VirtualSprings2dMobilityModel::ComputeKatg()
   {
     return 1;
   }
-  
+
   return coveredNodes/maxNodesNeighbours;
 }
 
