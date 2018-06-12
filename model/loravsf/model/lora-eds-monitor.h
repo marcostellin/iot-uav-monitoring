@@ -21,6 +21,7 @@
 
 #include "ns3/object.h"
 #include "ns3/gateway-lora-phy.h"
+#include <queue>
 
 namespace ns3 {
 
@@ -45,6 +46,8 @@ public:
 
   std::map<uint32_t, EdsEntry> GetEdsList (void);
   std::map<uint32_t, EdsEntry> GetEdsList (Time tolerance);
+  void UpdateHistory (Time tolerance);
+  std::queue<Vector> GetEdsHistory (void);
 
 
 private:
@@ -53,7 +56,9 @@ private:
 
   Ptr<GatewayLoraPhy> m_phy;   //!< Pointer to the phy
 
-  std::map<uint32_t, EdsEntry> m_eds;   
+  std::map<uint32_t, EdsEntry> m_eds;
+
+  std::queue<Vector> m_eds_hist;
 
 };
 

@@ -34,6 +34,7 @@
 #include "ns3/node-container.h"
 #include "ns3/lora-eds-monitor.h"
 #include "ns3/link-budget-estimator.h"
+#include "ns3/load-monitor.h"
 
 namespace ns3 {
 
@@ -74,6 +75,7 @@ public:
 
   void                         AddAtaNode             (uint32_t nodes);
   void                         AddAtgNode             (uint32_t nodes);
+  void                         AddIpv4Address         (Ipv4Address addr);
   void                         SetOlsrRouting         (Ptr<olsr::RoutingProtocol> routing);
   uint32_t                     GetCoveredEds          (void);
   void                         SetLinkBudgetEstimator (Ptr<LinkBudgetEstimator> estimator);
@@ -113,6 +115,8 @@ private:
   void                    UpdateRangeApprox (void);
 
   void                    CheckConnectivity (void);
+  Vector                  PredictDirection ();
+  double                  PredictSpeed ();
   
 
 
@@ -138,6 +142,7 @@ private:
   uint32_t m_pause; //<! stores the number of pause intervals
   uint32_t m_hops;  //<! store the number of hops from the BS of the current or last iteration
   uint32_t m_persist; //<! store the number of intervals the node should go on even if no connectivity to BS
+  double m_load;
 
   double m_speed; //!< Speed of aerial nodes
   double m_kAta; //<! stifness of aerial springs
@@ -156,12 +161,16 @@ private:
   std::vector<uint32_t> m_neighbours; //<! Store current one hop neighbours of current node
   std::vector<uint32_t> m_allNeighbours; //<! Store one hop neighbours + UAVs covering at least one ED;
   std::map<uint32_t, EdsEntry> m_eds; //<! List of currently covered EDs;
+  std::vector<Ipv4Address> m_addresses;
 
   std::list<Seed> m_seeds;
   Seed m_seed; 
 
   //LoraMonitor
   Ptr<LoraEdsMonitor> m_monitor;
+
+  //LoadMonitor
+  Ptr<LoadMonitor> m_loadMonitor;
 
   //Link Budget Estimator
   Ptr<LinkBudgetEstimator> m_estimator;

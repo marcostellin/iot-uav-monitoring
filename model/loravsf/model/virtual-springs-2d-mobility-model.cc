@@ -150,6 +150,11 @@ VirtualSprings2dMobilityModel::DoInitialize (void)
 
   m_monitor = Ptr<LoraEdsMonitor>( new LoraEdsMonitor (gwPhy));
 
+  //Initialize LoadMonitor
+  m_loadMonitor = CreateObject<LoadMonitor> ( node -> GetObject<Ipv4L3Protocol> () );
+
+  m_loadMonitor -> SetLoadInterval (Minutes (1));
+
   //Set Node Id
   m_id = node -> GetId ();
 
@@ -171,6 +176,26 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
 
   //Update list of neighbouring EDs
   VirtualSprings2dMobilityModel::SetEdsList ();
+
+  //Update Eds history
+  m_monitor -> UpdateHistory (Seconds(M_SEC_RETAIN_EDS));
+
+  //Update load
+  m_load = m_loadMonitor -> GetLoad ();
+
+  std::queue<Vector> hist = m_monitor -> GetEdsHistory ();
+
+  while (!hist.empty())
+  {
+    NS_LOG_LOGIC (hist.front ());
+    hist.pop ();
+  }
+
+  Vector dir = VirtualSprings2dMobilityModel::PredictDirection ();
+  double p_speed = VirtualSprings2dMobilityModel::PredictSpeed ();
+
+  NS_LOG_LOGIC ("Predicted direction: " << dir);
+  NS_LOG_LOGIC ("Predicted speed: " << p_speed);
 
   //Compute the direction of the movement
   Vector forceAta = VirtualSprings2dMobilityModel::ComputeAtaForce ();
@@ -281,6 +306,68 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
   
 }
 
+Vector
+VirtualSprings2dMobilityModel::PredictDirection ()
+{
+  std::queue<Vector> eds = m_monitor -> GetEdsHistory ();
+
+  double size = eds.size ();
+  Vector res;
+
+  while (!eds.empty ())
+  {
+    Vector v1 = eds.front ();
+    eds.pop ();
+
+    if (!eds.empty ())
+    {
+      Vector v2 = eds.front ();
+      res.x += (v2 - v1).x;
+      res.y += (v2 - v1).y;
+    }
+  }
+
+  if (size > 1)
+  {
+    res.x = res.x / (size - 1);
+    res.y = res.y / (size - 1);
+  }
+
+  return res;
+
+}
+
+double
+VirtualSprings2dMobilityModel::PredictSpeed ()
+{
+  std::queue<Vector> eds = m_monitor -> GetEdsHistory ();
+
+  double interval =  m_modeTime.GetSeconds ();
+  double size = eds.size ();
+  double speed = 0;
+
+  while (!eds.empty ())
+  {
+    Vector v1 = eds.front ();
+    eds.pop ();
+
+    if (!eds.empty ())
+    {
+      Vector v2 = eds.front ();
+      speed += CalculateDistance (v1, v2) / interval;
+    }
+  }
+
+  if (size > 1)
+  {
+    speed = speed / (size - 1);
+  }
+
+  return speed;
+
+
+}
+
 
 olsr::RoutingTableEntry
 VirtualSprings2dMobilityModel::HasPathToBs ()
@@ -357,6 +444,37 @@ VirtualSprings2dMobilityModel::SetNeighboursList () //Associate immediately ip t
     }
   }
 }
+
+// void
+// VirtualSprings2dMobilityModel::SetNeighboursList () //Associate immediately ip to ataNodes for faster lookup //Consider getting EdsList once and then use it at same period
+// {
+//   std::vector<ns3::olsr::RoutingTableEntry> entries = m_routing -> ns3::olsr::RoutingProtocol::GetRoutingTableEntries ();
+
+//   m_neighbours.clear ();
+//   m_allNeighbours.clear ();
+
+//   for (uint16_t i = 0; i < entries.size(); i++)
+//   {
+//     std::vector<Ipv4Address>::iterator it = std::find (m_addresses.begin (), m_addresses.end (), entries[i].destAddr);
+
+//     if (it != m_addresses.end ())
+//     { 
+//       uint32_t index = it - m_addresses.begin();
+//       uint32_t nodeId = m_ataNodes[index];
+//       Ptr<Node> node = NodeList::GetNode(nodeId);
+//       NS_LOG_UNCOND (nodeId);
+//       Ptr<VirtualSprings2dMobilityModel> mob = node -> GetObject<VirtualSprings2dMobilityModel> ();
+
+//       if (mob -> GetEdsList ().size () > 0 || entries[i].distance == 1)
+//         m_allNeighbours.push_back (node -> GetId());
+
+//       if (entries[i].distance == 1)
+//       {
+//         m_neighbours.push_back (node -> GetId ());
+//       }
+//     }
+//   }
+// }
 
 void
 VirtualSprings2dMobilityModel::SetEdsList ()
@@ -621,6 +739,12 @@ void
 VirtualSprings2dMobilityModel::AddAtaNode(uint32_t id)
 {
   m_ataNodes.push_back(id); 
+}
+
+void
+VirtualSprings2dMobilityModel::AddIpv4Address (Ipv4Address addr)
+{
+  m_addresses.push_back (addr);
 }
 
 void

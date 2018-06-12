@@ -85,10 +85,42 @@ LoraEdsMonitor::UpdateList (Ptr<Packet const> packet, uint32_t id)
 
 }
 
+void
+LoraEdsMonitor::UpdateHistory (Time tolerance)
+{
+  std::map<uint32_t, EdsEntry> eds = LoraEdsMonitor::GetEdsList (tolerance);
+
+  if (eds.size () > 0)
+  {
+    Vector res;
+    //Compute center of mass of eds
+    for (std::map<uint32_t, EdsEntry>::iterator it = eds.begin (); it != eds.end (); ++it )
+    {
+      res.x = res.x + (*it).second.x;
+      res.y = res.y + (*it).second.y;
+    }
+
+    res.x = res.x / eds.size ();
+    res.y = res.y / eds.size ();
+
+    //Save entry in queue
+    m_eds_hist.push (res);
+    if (m_eds_hist.size () > 5)
+      m_eds_hist.pop ();
+  }
+
+}
+
 std::map<uint32_t, EdsEntry>
 LoraEdsMonitor::GetEdsList (void)
 {
   return m_eds;
+}
+
+std::queue<Vector>
+LoraEdsMonitor::GetEdsHistory (void)
+{
+  return m_eds_hist;
 }
 
 std::map<uint32_t, EdsEntry>
