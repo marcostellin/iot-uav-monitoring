@@ -47,10 +47,16 @@ public:
   std::map<uint32_t, EdsEntry> GetEdsList (void);
   std::map<uint32_t, EdsEntry> GetEdsList (Time tolerance);
   void UpdateHistory (Time tolerance);
-  std::queue<Vector> GetEdsHistory (void);
+  std::queue<EdsEntry> GetEdsHistory (void);
+  Vector GetSpeedVector (void);
+  Time   GetLastTime (void);
+  Vector GetLastPosition (void);
 
 
 private:
+
+  double GetSpeed (void);
+  Vector GetDirection (void);
 
   void UpdateList (Ptr<Packet const> packet, uint32_t id);
 
@@ -58,7 +64,8 @@ private:
 
   std::map<uint32_t, EdsEntry> m_eds;
 
-  std::queue<Vector> m_eds_hist;
+  std::queue<EdsEntry> m_eds_hist;
+  //std::queue<std::pair<Time, Vector>> m_eds_hist; 
 
 };
 

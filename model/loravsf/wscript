@@ -13,6 +13,7 @@ def build(bld):
         'model/lora-eds-monitor.cc',
         'model/link-budget-estimator.cc',
         'model/load-monitor.cc',
+        'model/seeds-manager.cc',
         ]
 
     module_test = bld.create_ns3_module_test_library('loravsf')
@@ -26,7 +27,8 @@ def build(bld):
         'model/virtual-springs-2d-mobility-model.h',
         'model/lora-eds-monitor.h',
         'model/link-budget-estimator.h',
-        'model/load-monitor.h'
+        'model/load-monitor.h',
+        'model/seeds-manager.h',
         ]
 
     # if bld.env.ENABLE_EXAMPLES:

@@ -35,6 +35,7 @@
 #include "ns3/lora-eds-monitor.h"
 #include "ns3/link-budget-estimator.h"
 #include "ns3/load-monitor.h"
+#include "ns3/seeds-manager.h"
 
 namespace ns3 {
 
@@ -52,13 +53,13 @@ namespace ns3 {
  * model.
  */
 
-struct Seed
-{
-  Seed (): center (Vector ()), expires (0) {}
+// struct Seed
+// {
+//   Seed (): center (Vector ()), expires (0) {}
 
-  Vector center;
-  uint16_t expires;
-};
+//   Vector center;
+//   uint16_t expires;
+// };
 
 
 class VirtualSprings2dMobilityModel : public MobilityModel 
@@ -81,6 +82,9 @@ public:
   void                         SetLinkBudgetEstimator (Ptr<LinkBudgetEstimator> estimator);
   std::map<uint32_t, EdsEntry> GetEdsList             (void);
 
+  void                         ReceiveToken           (Token token);
+  void                    SendToken (Token token);
+
 private:
   /**
    * \brief Performs the rebound of the node if it reaches a boundary
@@ -92,13 +96,21 @@ private:
    * time is reached, or intersection with the bounding box
    */
   void DoWalk (Time timeLeft);
+  void GoBack (void);
+  void DoMoveForces (void);
+
   /**
    * Perform initialization of the object before MobilityModel::DoInitialize ()
    */
   void     DoInitializePrivate    (void);
+  void     InitializeMonitors     (void);
 
   Vector   ComputeAtaForce        (void);
   Vector   ComputeAtgForce        (void);
+  Vector   ComputeSeedForce       (void);
+  Vector   ComputeTotalForce      (void);
+  Vector   GetDirection           (Vector force);
+
   int      GetMaxNodesNeighbours  (void);
   double   ComputeKatg            (void);
   uint32_t NumSharedEds           (uint32_t ataId);
@@ -115,10 +127,8 @@ private:
   void                    UpdateRangeApprox (void);
 
   void                    CheckConnectivity (void);
-  Vector                  PredictDirection ();
-  double                  PredictSpeed ();
-  
-
+  void                    UpdateHistory (void);
+  Token                   GenerateToken (void);
 
   virtual void DoDispose (void);
   virtual void DoInitialize (void);
@@ -163,8 +173,8 @@ private:
   std::map<uint32_t, EdsEntry> m_eds; //<! List of currently covered EDs;
   std::vector<Ipv4Address> m_addresses;
 
-  std::list<Seed> m_seeds;
-  Seed m_seed; 
+  //std::list<Seed> m_seeds;
+  //Seed m_seed; 
 
   //LoraMonitor
   Ptr<LoraEdsMonitor> m_monitor;
@@ -174,6 +184,10 @@ private:
 
   //Link Budget Estimator
   Ptr<LinkBudgetEstimator> m_estimator;
+
+  //Seed Manager
+  Ptr<SeedsManager> m_manager;
+  Token m_token;
 
   Ptr<olsr::RoutingProtocol> m_routing;
 
