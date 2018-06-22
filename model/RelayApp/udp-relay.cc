@@ -76,6 +76,8 @@ UdpRelay::UdpRelay ()
   m_sent = 0;
   m_socket = 0;
   m_sendEvent = EventId ();
+
+  Simulator::Schedule (Seconds (30), &UdpRelay::SendBuffer, this );
 }
 
 UdpRelay::~UdpRelay ()
@@ -165,6 +167,24 @@ UdpRelay::StopApplication (void)
 }
 
 void
+UdpRelay::SendBuffer ()
+{
+
+  NS_LOG_DEBUG ("Buffer size : " << m_packetBuffer.size ());
+
+	while (!m_packetBuffer.empty () )
+	{
+		bool succeed = UdpRelay::Send (m_packetBuffer.front ());
+		if (!succeed)
+			break;
+		else
+			m_packetBuffer.pop ();
+	}
+
+	Simulator::Schedule (Seconds (30), &UdpRelay::SendBuffer, this );
+}
+
+bool
 UdpRelay::Send (Ptr<Packet> p)
 {
   NS_LOG_FUNCTION (this);
@@ -173,6 +193,7 @@ UdpRelay::Send (Ptr<Packet> p)
   seqTs.SetSeq (m_sent);
   //Ptr<Packet> p = Create<Packet> (m_size-(8+4)); // 8+4 : the size of the seqTs header
   p->AddHeader (seqTs);
+  bool sent = false;
 
   std::stringstream peerAddressStringStream;
   if (Ipv4Address::IsMatchingType (m_peerAddress))
@@ -191,18 +212,18 @@ UdpRelay::Send (Ptr<Packet> p)
                                     << peerAddressStringStream.str () << " Uid: "
                                     << p->GetUid () << " Time: "
                                     << (Simulator::Now ()).GetSeconds ());
-
+      sent = true;
     }
   else
     {
       NS_LOG_INFO ("Error while sending " << m_size << " bytes to "
                                           << peerAddressStringStream.str ());
+
+      p -> RemoveHeader (seqTs);
+      m_packetBuffer.push (p);
     }
 
-  if (m_sent < m_count)
-    {
-      //m_sendEvent = Simulator::Schedule (m_interval, &UdpRelay::Send, this);
-    }
+    return sent;
 }
 
 } // Namespace ns3

@@ -27,6 +27,7 @@
 #include "ns3/event-id.h"
 #include "ns3/ptr.h"
 #include "ns3/ipv4-address.h"
+#include <queue>
 
 namespace ns3 {
 
@@ -68,7 +69,7 @@ public:
   /**
    * \brief Send a packet
    */
-  void Send (Ptr<Packet> p);
+  bool Send (Ptr<Packet> p);
 
 protected:
   virtual void DoDispose (void);
@@ -78,6 +79,8 @@ private:
   virtual void StartApplication (void);
   virtual void StopApplication (void);
 
+  void SendBuffer ();
+
   uint32_t m_count; //!< Maximum number of packets the application will send
   uint32_t m_size; //!< Size of the sent packet (including the SeqTsHeader)
 
@@ -86,6 +89,8 @@ private:
   Address m_peerAddress; //!< Remote peer address
   uint16_t m_peerPort; //!< Remote peer port
   EventId m_sendEvent; //!< Event to send the next packet
+
+  std::queue<Ptr<Packet>> m_packetBuffer;
 
 };
 
