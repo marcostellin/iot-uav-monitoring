@@ -99,4 +99,18 @@ LoadMonitor::GetLoad (void)
   return (double)copy.size () / m_interval.GetSeconds ();
 }
 
+bool
+LoadMonitor::IsBusy (void)
+{
+  std::queue<Time> copy = m_load;
+
+  if (copy.empty () )
+    return false;
+
+  while (!copy.empty() && copy.front () < Simulator::Now () - m_interval)
+      copy.pop ();
+  
+  return copy.size () > 0;
+}
+
 }

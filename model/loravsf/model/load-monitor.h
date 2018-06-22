@@ -40,6 +40,7 @@ public:
 
   void SetLoadInterval (Time interval);
   double GetLoad (void);
+  bool IsBusy (void);
 
 private:
 
