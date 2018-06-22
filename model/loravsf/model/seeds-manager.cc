@@ -49,6 +49,15 @@ SeedsManager::~SeedsManager ()
 void 
 SeedsManager::AddToken (Token token)
 {
+  for (uint16_t i = 0; i < m_tokens.size (); i++)
+  {
+    if (m_tokens[i].id == token.id)
+    {
+      m_tokens[i] = token;
+      return;
+    }
+  }
+
   m_tokens.push_back (token);
 
   NS_LOG_INFO ("Added token." << " LastPos=" << token.lastPos << " LastTime=" << token.lastTime << " Weight=" << token.weight << " Speed=" << token.speed << " Expires=" << token.expires  );

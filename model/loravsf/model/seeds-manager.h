@@ -40,6 +40,8 @@ struct Token
   uint32_t weight;
   Vector speed;
   Time expires;
+  uint32_t priority;
+  uint32_t id;
 };
 
 
