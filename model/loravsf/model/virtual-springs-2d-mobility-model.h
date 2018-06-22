@@ -123,6 +123,7 @@ private:
   double                  GetDistanceFromFurthestNeighbour (void);
   double                  GetDistanceFromBs                (void);
   uint32_t                FindMostSimilarNode              (void);
+  uint32_t                GetMaxCardinality ();
   
   void                    UpdateRangeApprox (void);
 
@@ -153,6 +154,7 @@ private:
   uint32_t m_hops;  //<! store the number of hops from the BS of the current or last iteration
   uint32_t m_persist; //<! store the number of intervals the node should go on even if no connectivity to BS
   double m_load;
+  bool m_lastNode;
 
   double m_speed; //!< Speed of aerial nodes
   double m_kAta; //<! stifness of aerial springs

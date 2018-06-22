@@ -146,6 +146,7 @@ VirtualSprings2dMobilityModel::DoInitialize (void)
   m_hops = 0;
   m_persist = 0;
   m_rangeApprox = 0;
+  m_lastNode = false;
 
   Ptr<VirtualSprings2dMobilityModel> mob = Ptr<VirtualSprings2dMobilityModel> (this);
   Ptr<Node> node = mob -> GetObject<Node> ();
@@ -177,6 +178,7 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
 
   //Update load
   m_load = m_loadMonitor -> GetLoad ();
+  NS_LOG_LOGIC ("Load of " << m_id << "=" << m_load);
 
   olsr::RoutingTableEntry entry = VirtualSprings2dMobilityModel::HasPathToBs();
     
@@ -198,8 +200,9 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
     }
 
     //Move according to forces if m_pause intervals have passed...
-    if (m_pause == 0) 
+    if (m_pause == 0 || m_load == 0) 
     {
+      m_pause = 0;
       VirtualSprings2dMobilityModel::DoMoveForces ();
     }
 
@@ -218,7 +221,7 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
     if (m_persist == 0)
     {
       //Create Token
-      if (m_token.expires == Seconds(0) && m_eds.size () > 0)
+      if (m_lastNode && m_token.expires == Seconds(0) && m_eds.size () > 0)
       {
         m_token = VirtualSprings2dMobilityModel::GenerateToken ();
       }
@@ -243,6 +246,11 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
           m_persist = m_persist / 2;
         else
           m_persist = m_persist * 2;
+
+        if (simNode == 0)
+          m_lastNode = true;
+        else
+          m_lastNode = false;
 
         NS_LOG_INFO ("Persist on route for " << m_persist << " intervals");
       }
@@ -275,7 +283,7 @@ VirtualSprings2dMobilityModel::InitializeMonitors ()
   //Initialize LoadMonitor
   m_loadMonitor = CreateObject<LoadMonitor> ( node -> GetObject<Ipv4L3Protocol> () );
 
-  m_loadMonitor -> SetLoadInterval (Minutes (5));
+  m_loadMonitor -> SetLoadInterval (Minutes (3));
 
   //Intialize SeedManager
   m_manager = CreateObject<SeedsManager> ();
@@ -348,14 +356,14 @@ VirtualSprings2dMobilityModel::ComputeTotalForce ()
   Vector forceAtg = VirtualSprings2dMobilityModel::ComputeAtgForce ();
   Vector forceSeed;
 
-  if (m_load < 1 && m_eds.size () == 0)
+  if (m_eds.size () == 0 && !m_loadMonitor -> IsBusy ())
   {
     forceSeed = VirtualSprings2dMobilityModel::ComputeSeedForce ();
   }
   
   Vector force = forceAta + forceAtg + forceSeed;
 
-  //NS_LOG_DEBUG ("AtG Force = " << forceAtg << ", AtA force = " << forceAta);
+  NS_LOG_DEBUG ("AtG Force = " << forceAtg << ", AtA force = " << forceAta << ", Seed Force = " << forceSeed);
 
   return force;
 }
@@ -381,7 +389,7 @@ VirtualSprings2dMobilityModel::GenerateToken ()
   token.weight = m_eds.size ();
   token.speed = m_monitor -> GetSpeedVector ();
   token.expires = Simulator::Now () + Minutes (10);
-  NS_LOG_DEBUG ("Token." << " lastPos=" << token.lastPos << " lastTime=" << token.lastTime << " weight=" << token.weight << " speed=" << token.speed << " expires=" << token.expires);
+  token.id = m_id;
 
   return token;
 }
@@ -448,9 +456,7 @@ VirtualSprings2dMobilityModel::SendToken (Token token)
 
       if (addr.IsEqual (entries[i].destAddr))
       {
-        //NS_LOG_DEBUG ("Token sent to " << node -> GetId ());
         mob -> ReceiveToken (token);
-        //sNS_LOG_DEBUG (mob);
       }
     }
   }
@@ -479,7 +485,7 @@ VirtualSprings2dMobilityModel::ComputeAtaForce()
   double fx = 0;
   double fy = 0;
   
-  for (uint16_t j = 0; j < m_allNeighbours.size(); j++)
+  for (uint16_t j = 0; j < m_neighbours.size(); j++)
   {
     Ptr<Node> node = NodeList::GetNode(m_neighbours[j]);
     Ptr<MobilityModel> otherMob = node -> GetObject<MobilityModel>();
@@ -487,7 +493,7 @@ VirtualSprings2dMobilityModel::ComputeAtaForce()
 
     double lb = m_estimator -> GetAtaLinkBudget ( Ptr<MobilityModel> (this), otherMob);
 
-    double k_ata = m_kAta;
+    double k_ata = m_kAta + m_ataNodes.size ()/m_neighbours.size ();
 
     double disp = m_lbReqAta - lb;
     Vector diff = otherPos - myPos;
@@ -507,10 +513,14 @@ VirtualSprings2dMobilityModel::ComputeAtgForce()
   Vector myPos = m_helper.GetCurrentPosition ();
   myPos.z = 0;
 
-  double kAtg = VirtualSprings2dMobilityModel::ComputeKatg();
+  //double kAtg = VirtualSprings2dMobilityModel::ComputeKatg();
 
   double fx = 0;
   double fy = 0;
+
+  uint32_t maxCard = VirtualSprings2dMobilityModel::GetMaxCardinality ();
+
+  NS_LOG_DEBUG ("MaxCard=" << maxCard);
 
   for (std::map<uint32_t, EdsEntry>::iterator it = m_eds.begin (); it != m_eds.end (); ++it)
   {
@@ -549,12 +559,13 @@ VirtualSprings2dMobilityModel::ComputeAtgForce()
         }
       }
 
-      cnt > 1 ? kAtgPlus = 1 : kAtgPlus = M_KATG_PLUS;
+      //cnt > 1 ? kAtgPlus = 1 : kAtgPlus = M_KATG_PLUS;
+      kAtgPlus = (double)maxCard / (double)cnt;
     }
     
     double disp = m_lbReqAtg - lb;
     Vector diff = pos - myPos;
-    double force = (kAtg * kAtgPlus) * disp;
+    double force = (kAtgPlus) * disp;
     double k = force/std::sqrt(diff.x*diff.x + diff.y*diff.y);
 
     fx += k*diff.x;
@@ -578,13 +589,13 @@ VirtualSprings2dMobilityModel::ComputeSeedForce ()
   for (std::vector<Seed>::iterator it = seeds.begin (); it != seeds.end (); ++it)
   { 
     Seed seed = (*it);
-
+    //double priority = seeds.end () - it;
     Vector seedPos = seed.pos;
-    double k_seed = seed.weight;
-    //double k_seed = 1;
+    //double k_seed = seed.weight;
+    double k_seed = 1;
     Ptr<ConstantPositionMobilityModel> mob = CreateObject<ConstantPositionMobilityModel> ();
     mob -> SetPosition (seedPos);
-    double lb = m_estimator -> GetAtgLinkBudget ( Ptr<MobilityModel> (this), mob);
+    double lb = m_estimator -> GetAtgLinkBudget ( Ptr<MobilityModel> (this), mob );
 
     double disp = m_lbReqAtg - lb;
     Vector diff = seedPos - pos;
@@ -594,10 +605,41 @@ VirtualSprings2dMobilityModel::ComputeSeedForce ()
     fx += k*diff.x;
     fy += k*diff.y;
 
-    NS_LOG_DEBUG ("Computing seed force to " << seedPos << " = " << Vector (fx, fy, 0));
+    //NS_LOG_DEBUG ("Computing seed force to " << seedPos << " = " << Vector (fx, fy, 0));
   }
 
   return Vector(fx,fy,0);
+}
+
+uint32_t
+VirtualSprings2dMobilityModel::GetMaxCardinality ()
+{
+  uint32_t maxCard = 1;
+
+  for (std::map<uint32_t, EdsEntry>::iterator it = m_eds.begin (); it != m_eds.end (); ++it)
+  {
+    uint16_t cnt = 1;
+
+    for (uint16_t i = 0; i < m_neighbours.size (); i++)
+    {
+      Ptr<Node> ataNode = NodeList::GetNode(m_neighbours[i]);
+      Ptr<VirtualSprings2dMobilityModel> ataMob = ataNode -> GetObject<VirtualSprings2dMobilityModel> ();
+      std::map<uint32_t, EdsEntry> otherList = ataMob -> GetEdsList ();
+
+      std::map<uint32_t, EdsEntry>::iterator oIt;
+      oIt = otherList.find ( it -> first );
+
+      if ( oIt != otherList.end () )
+      {
+        cnt ++;
+      }
+    }
+
+    if (cnt > maxCard)
+      maxCard = cnt;
+  }
+
+  return maxCard;
 }
 
 int
