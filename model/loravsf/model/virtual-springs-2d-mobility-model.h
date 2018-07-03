@@ -83,7 +83,7 @@ public:
   std::map<uint32_t, EdsEntry> GetEdsList             (void);
 
   void                         ReceiveToken           (Token token);
-  void                    SendToken (Token token);
+  void                         SendToken              (Token token);
 
 private:
   /**
@@ -130,6 +130,7 @@ private:
   void                    CheckConnectivity (void);
   void                    UpdateHistory (void);
   Token                   GenerateToken (void);
+  void                    Reattach (void);
 
   virtual void DoDispose (void);
   virtual void DoInitialize (void);
@@ -162,6 +163,7 @@ private:
   double m_lbReqAta; //<! required LB for AtA links
   double m_lbReqAtg; //<! required LB for AtG links
   double m_rangeApprox; //<! store the approximate range of transmission
+  bool m_detach;
 
   bool m_kAtgPlusMode; //<! if true give more priority to nodes exclusively covered by the current UAV
 
