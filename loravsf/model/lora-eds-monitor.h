@@ -76,6 +76,8 @@ private:
   double GetSpeed (void);
   Vector GetDirection (void);
   void UpdateHistory (uint32_t id, Vector pos, Time delta);
+  double ComputeAverageSilhoutte (point pt, int len, uint16_t k);
+
   void PrintHistory ();
   void PrintHistory (std::map<uint32_t, std::queue<EdsEntry>> map);
   void PrintPts (point pt, int len);

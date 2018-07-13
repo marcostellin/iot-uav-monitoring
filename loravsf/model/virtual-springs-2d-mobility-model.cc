@@ -208,7 +208,7 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
   {
     m_monitor -> UpdateLostEds (Seconds(65));
     m_monitor -> FilterLostEds (Seconds (40), Minutes (3) );
-    m_monitor -> CreateClusters (1);
+    m_monitor -> CreateClusters (3);
   }
 
   olsr::RoutingTableEntry entry = VirtualSprings2dMobilityModel::HasPathToBs();

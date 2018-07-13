@@ -210,31 +210,152 @@ LoraEdsMonitor::CreateClusters (uint16_t kMax)
   if (m_eds_lost.size () == 0)
     return;
 
-  point pt = (point) malloc(sizeof(point_t)*m_eds_lost.size ());
-  uint16_t cnt = 0;
-
-  for (std::map<uint32_t, std::queue<EdsEntry>>::iterator it = m_eds_lost.begin (); it != m_eds_lost.end (); ++it)
+  for (uint16_t j = 2; j <= kMax; j++ )
   {
-    uint32_t id = it -> first;
-    std::queue<EdsEntry> q = it -> second;
+    point pt = (point) malloc(sizeof(point_t)*m_eds_lost.size ());
+    uint16_t cnt = 0;
 
-    point_t p;
-    p.id = id;
-    p.x = q.back().x;
-    p.y = q.back().y;
+    for (std::map<uint32_t, std::queue<EdsEntry>>::iterator it = m_eds_lost.begin (); it != m_eds_lost.end (); ++it)
+    {
+      uint32_t id = it -> first;
+      std::queue<EdsEntry> q = it -> second;
 
-    pt[cnt] = p; 
-    cnt++;
+      point_t p;
+      p.id = id;
+      p.x = q.back().x;
+      p.y = q.back().y;
+
+      pt[cnt] = p; 
+      cnt++;
+    }
+
+    //print_points (pt, m_eds_lost.size ());
+    if (m_eds_lost.size () >= j)
+    {
+      lloyd(pt, m_eds_lost.size (), j);
+      double sil = ComputeAverageSilhoutte (pt, m_eds_lost.size (), j);
+      PrintPts (pt, m_eds_lost.size ());
+      NS_LOG_INFO ("Silhoutte for k = " << j << " is " << sil);
+    }
+
+    free (pt);
+  }
+}
+
+double
+LoraEdsMonitor::ComputeAverageSilhoutte (point pt, int len, uint16_t k)
+{
+  //Contains the number of nodes per cluster;
+  uint16_t clusterPts[k];
+  for (uint16_t i = 0; i < k; i++)
+    clusterPts[i] = 0;
+
+  //double *aI = (double*) malloc (sizeof (double) * len);
+  double *aI = new double[len];
+
+  //Compute the average distance 'a' from each node in a cluster to the other nodes in the same cluster
+  for (uint16_t i = 0; i < len; i++)
+  {
+    int group = pt[i].group;
+    clusterPts[group] ++;
+    Vector pos = Vector (pt[i].x, pt[i].y, 0);
+    uint16_t cnt = 0;
+    aI[i] = 0;
+
+    for (uint16_t j = 0; j < len; j++)
+    {
+      if (i != j && group == pt[j].group)
+      {
+        cnt++;
+        Vector oPos = Vector (pt[j].x, pt[j].y, 0);
+        double dist = CalculateDistance (oPos, pos);
+        aI[i] += dist;
+      }
+    }
+
+    if (cnt > 0)
+      aI[i] = aI[i] / cnt;
   }
 
-  //print_points (pt, m_eds_lost.size ());
-  if (m_eds_lost.size () > 1)
+  //Compute the average distance 'b' from each node in a cluster to other nodes in different clusters
+  //double *bI = (double*) malloc (sizeof (double)  * len);
+
+  double** bI = new double*[len];
+  for (uint16_t i = 0; i < len; ++i)
+    bI[i] = new double[k];
+
+  for (uint16_t i = 0; i < len; i++)
+    for (uint16_t j = 0; j < k; j++)
+      bI[i][j] = 0;
+
+  for (uint16_t i = 0; i < len; i++)
   {
-    lloyd(pt, m_eds_lost.size (), 2);
-    PrintPts (pt, m_eds_lost.size ());
+    int group = pt[i].group;
+    Vector pos = Vector (pt[i].x, pt[i].y, 0);
+
+
+    for (uint16_t j = 0; j < len; j++)
+    {
+      if (i != j && group != pt[j].group)
+      {
+        Vector oPos = Vector (pt[j].x, pt[j].y, 0);
+        double dist = CalculateDistance (oPos, pos);
+        bI[i][pt[j].group] += dist/clusterPts[pt[j].group];
+      }
+    }
   }
 
-  free (pt);
+  //Select the closest cluster to each node and save its distance
+  double *bIFinal = new double[len];
+  for (uint16_t i = 0; i < len; i++)
+  { 
+    double min = 1e9;
+    for (uint16_t j = 0; j < k; j++)
+    {
+      double cur = bI[i][j];
+      if (cur != 0 && cur < min)
+        min = cur;
+    }
+
+    bIFinal[i] = min;
+  }
+
+  //Compute silhoutte value for each node
+  double *sI = new double[len];
+  for (uint16_t i = 0; i < len; i++)
+  {
+    if (aI[i] < bIFinal[i])
+      sI[i] = 1 - aI[i] / bIFinal[i];
+
+    if (aI[i] > bIFinal[i])
+      sI[i] = aI[i] / bIFinal[i] - 1;
+
+    if (aI[i] == bIFinal[i])
+      sI[i] = 0;
+
+    if (aI[i] == 0)
+      sI[i] = 0;
+  }
+
+  //Compute average silhoutte
+  double avgS = 0;
+
+  for (uint16_t i = 0; i < len; i++)
+  {
+    avgS = avgS + sI[i];
+  }
+
+  //Free memory
+  delete [] aI;
+  for (uint16_t i = 0; i < len; ++i)
+    delete [] bI[i];
+
+  delete [] bI;
+  delete [] sI;
+  delete [] bIFinal;
+
+  return avgS / (double) len;
+
 }
 
 void
@@ -495,7 +616,7 @@ LoraEdsMonitor::PrintPts (point pts, int len)
   for (int i = 0; i < len; i++)
   {
     point_t pt = pts[i];
-    NS_LOG_INFO ("id=" << pt.id << "x=" << pt.x << ", y=" << pt.y << ", group=" << pt.group);
+    NS_LOG_INFO ("id=" << pt.id << " x=" << pt.x << ", y=" << pt.y << ", group=" << pt.group);
     //printf("x=%f, y=%f, group=%d \n", pt.x, pt.y, pt.group);
   }
 }
