@@ -76,7 +76,7 @@ public:
 
   void                         AddAtaNode             (uint32_t nodes);
   void                         AddAtgNode             (uint32_t nodes);
-  void                         AddIpv4Address         (Ipv4Address addr);
+  //void                         AddIpv4Address         (Ipv4Address addr);
   void                         SetOlsrRouting         (Ptr<olsr::RoutingProtocol> routing);
   uint32_t                     GetCoveredEds          (void);
   void                         SetLinkBudgetEstimator (Ptr<LinkBudgetEstimator> estimator);
@@ -131,6 +131,7 @@ private:
   void                    UpdateHistory (void);
   Token                   GenerateToken (void);
   void                    Reattach (void);
+  std::vector<Token>      GenerateTokens (std::vector<ClusterInfo> clusters);
 
   virtual void DoDispose (void);
   virtual void DoInitialize (void);
@@ -175,10 +176,7 @@ private:
   std::vector<uint32_t> m_neighbours; //<! Store current one hop neighbours of current node
   std::vector<uint32_t> m_allNeighbours; //<! Store one hop neighbours + UAVs covering at least one ED;
   std::map<uint32_t, EdsEntry> m_eds; //<! List of currently covered EDs;
-  std::vector<Ipv4Address> m_addresses;
-
-  //std::list<Seed> m_seeds;
-  //Seed m_seed; 
+  //std::vector<Ipv4Address> m_addresses;
 
   //LoraMonitor
   Ptr<LoraEdsMonitor> m_monitor;
@@ -190,9 +188,11 @@ private:
   Ptr<LinkBudgetEstimator> m_estimator;
 
   //Seed Manager
+  uint16_t m_predictionMode;
   Ptr<SeedsManager> m_manager;
   Token m_token;
 
+  //Routing protocol
   Ptr<olsr::RoutingProtocol> m_routing;
 
   //Trace sources

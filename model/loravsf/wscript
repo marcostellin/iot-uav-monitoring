@@ -14,6 +14,7 @@ def build(bld):
         'model/link-budget-estimator.cc',
         'model/load-monitor.cc',
         'model/seeds-manager.cc',
+        'model/kmeans.cc',
         ]
 
     module_test = bld.create_ns3_module_test_library('loravsf')
@@ -29,6 +30,7 @@ def build(bld):
         'model/link-budget-estimator.h',
         'model/load-monitor.h',
         'model/seeds-manager.h',
+        'model/kmeans.h',
         ]
 
     # if bld.env.ENABLE_EXAMPLES:

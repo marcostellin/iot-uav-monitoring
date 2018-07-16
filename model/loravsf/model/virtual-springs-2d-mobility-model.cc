@@ -21,6 +21,7 @@
 #include "ns3/constant-position-mobility-model.h"
 #include "ns3/enum.h"
 #include "ns3/double.h"
+#include "ns3/integer.h"
 #include "ns3/string.h"
 #include "ns3/pointer.h"
 #include "ns3/simulator.h"
@@ -84,6 +85,12 @@ VirtualSprings2dMobilityModel::GetTypeId (void)
                    MakeDoubleAccessor (&VirtualSprings2dMobilityModel::m_lbReqAtg),
                    MakeDoubleChecker<double> ())
 
+    .AddAttribute ("PredictionMode",
+                   "0=No prediction, 1=simple prediction, 2=direction clustering, 3=kmeans clustering",
+                   IntegerValue (0),
+                   MakeIntegerAccessor (&VirtualSprings2dMobilityModel::m_predictionMode),
+                   MakeIntegerChecker<uint16_t> ())
+
     .AddAttribute ("BsPosition", "Position of BS",
                     VectorValue (Vector (200.0, 200.0, 0.0)), 
                     MakeVectorAccessor (&VirtualSprings2dMobilityModel::m_bsPos),
@@ -133,18 +140,9 @@ VirtualSprings2dMobilityModel::CheckConnectivity ()
 void
 VirtualSprings2dMobilityModel::UpdateHistory ()
 {
-
   m_monitor -> UpdateHistory (Seconds(M_SEC_RETAIN_EDS));
   Simulator::Schedule (Seconds (10), &VirtualSprings2dMobilityModel::UpdateHistory, this);
 }
-
-// void
-// VirtualSprings2dMobilityModel::UpdateHistory ()
-// {
-
-//   m_monitor -> UpdateLostEds (Seconds(M_SEC_RETAIN_EDS));
-//   Simulator::Schedule (Seconds (10), &VirtualSprings2dMobilityModel::UpdateHistory, this);
-// }
 
 void
 VirtualSprings2dMobilityModel::DoInitialize (void)
@@ -168,7 +166,9 @@ VirtualSprings2dMobilityModel::DoInitialize (void)
   //Schedule Recurrent tasks
   Simulator::ScheduleNow (&VirtualSprings2dMobilityModel::CheckConnectivity, this);
   Simulator::Schedule (Seconds (10), &VirtualSprings2dMobilityModel::UpdateHistory, this);
-  // Simulator::Schedule (Seconds (10), &VirtualSprings2dMobilityModel::UpdateHistory, this);
+
+  if (m_predictionMode == 1)
+    Simulator::Schedule (Seconds (10), &VirtualSprings2dMobilityModel::UpdateHistory, this);
 
   DoInitializePrivate ();
   MobilityModel::DoInitialize ();
@@ -188,10 +188,45 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
   //Update load
   m_load = m_loadMonitor -> GetLoad ();
 
-  // m_monitor -> UpdateLostEds (Seconds(M_SEC_RETAIN_EDS * 2));
-  // m_monitor -> FilterLostEds (Seconds (30), Seconds (60));
-  // m_monitor -> GetClusterInfo ();
+  //Check for lost clusters
+  if (m_predictionMode == 2)
+  {
+    m_monitor -> UpdateLostEds (Seconds(65));
+    m_monitor -> FilterLostEds (Seconds (40), Minutes (3) );
+    std::vector<ClusterInfo> clusters = m_monitor -> GetClusterInfo ();
 
+    std::vector<Token> tokens = GenerateTokens (clusters);
+
+    for (uint16_t i = 0; i < tokens.size (); i++)
+    {
+      SendToken (tokens[i]);
+      m_manager -> AddToken (tokens[i]);
+    }
+  }
+
+  if (m_predictionMode == 3)
+  {
+    uint16_t maxClusters = 3;
+    m_monitor -> UpdateLostEds (Seconds(65));
+    m_monitor -> FilterLostEds (Seconds (40), Minutes (3) );
+
+    uint32_t len = m_monitor -> GetEdsLostSize ();
+    point pt = (point) malloc(sizeof(point_t)*len);
+
+    uint16_t numClust = m_monitor -> CreateClusters (pt, len, maxClusters);
+
+    std::vector<ClusterInfo> clusters = m_monitor -> ComputeClustersInfo (pt, len, numClust);
+
+    std::vector<Token> tokens = GenerateTokens (clusters);
+
+    for (uint16_t i = 0; i < tokens.size (); i++)
+    {
+      SendToken (tokens[i]);
+      m_manager -> AddToken (tokens[i]);
+    }
+
+    free(pt);
+  }
 
   olsr::RoutingTableEntry entry = VirtualSprings2dMobilityModel::HasPathToBs();
     
@@ -213,15 +248,15 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
     }
 
     //Start detach procedure if there are some seeds
-    if (m_manager -> GetSeeds ().size () > 0)
-    {
-      uint32_t simNode = FindMostSimilarNode ();
-      if ( (simNode == 0 || m_id > simNode) && !m_detach)
-      {
-        m_detach = true;
-        Simulator::Schedule (Minutes (5), &VirtualSprings2dMobilityModel::Reattach, this);
-      }
-    }
+    // if (m_manager -> GetSeeds ().size () > 0)
+    // {
+    //   uint32_t simNode = FindMostSimilarNode ();
+    //   if ( (simNode == 0 || m_id > simNode) && !m_detach)
+    //   {
+    //     m_detach = false;
+    //     Simulator::Schedule (Minutes (5), &VirtualSprings2dMobilityModel::Reattach, this);
+    //   }
+    // }
 
     //Move according to forces if m_pause intervals have passed...
     if (m_pause == 0 || m_load == 0) 
@@ -244,10 +279,12 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
     if (m_persist == 0)
     {
       //Create Token
-      if (m_lastNode && m_token.expires == Seconds(0) && m_eds.size () > 0)
+      if (m_predictionMode == 1)
       {
-        //m_monitor -> GetClustersNumber (Seconds (35));
-        m_token = VirtualSprings2dMobilityModel::GenerateToken ();
+        if (m_lastNode && m_token.expires == Seconds(0) && m_eds.size () > 0)
+        {
+          m_token = VirtualSprings2dMobilityModel::GenerateToken ();
+        }
       }
 
       //Set the pause time
@@ -294,11 +331,11 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
   
 }
 
-void
-VirtualSprings2dMobilityModel::Reattach ()
-{
-  m_detach = false;
-}
+// void
+// VirtualSprings2dMobilityModel::Reattach ()
+// {
+//   m_detach = false;
+// }
 
 void
 VirtualSprings2dMobilityModel::InitializeMonitors ()
@@ -391,8 +428,10 @@ VirtualSprings2dMobilityModel::ComputeTotalForce ()
     forceSeed = VirtualSprings2dMobilityModel::ComputeSeedForce ();
   }
 
-  if (m_detach)
+  if (m_detach && forceSeed.GetLength() > 0)
+  {
     forceAtg = Vector (0,0,0);
+  }
   
   Vector force = forceAta + forceAtg + forceSeed;
 
@@ -425,6 +464,29 @@ VirtualSprings2dMobilityModel::GenerateToken ()
   token.id = m_id;
 
   return token;
+}
+
+std::vector<Token>
+VirtualSprings2dMobilityModel::GenerateTokens (std::vector<ClusterInfo> clusters)
+{
+  std::vector<Token> tokens;
+
+  for (std::vector<ClusterInfo>::iterator it = clusters.begin (); it != clusters.end (); ++it)
+  {
+    ClusterInfo c = (*it);
+    Token t;
+    t.lastPos = c.lastPosition;
+    t.lastTime = c.lastTime;
+    t.weight = c.weight;
+    t.speed = c.velocity;
+    t.expires = Simulator::Now () + Minutes (10);
+    t.id = m_id*10 + c.id;
+
+    tokens.push_back (t);
+    NS_LOG_LOGIC ("Generated token " << t.id << " lastPos=" << t.lastPos << " speed=" << t.speed );
+  }
+
+  return tokens;
 }
 
 uint32_t
@@ -625,10 +687,12 @@ VirtualSprings2dMobilityModel::ComputeSeedForce ()
     //double priority = seeds.end () - it;
     Vector seedPos = seed.pos;
     //double k_seed = seed.weight;
-    double k_seed = 1;
+    double k_seed = seed.weight;
 
-    if (m_detach && CalculateDistance (pos, seedPos) > 500)
-      continue;
+    if (CalculateDistance (pos, seed.origin) > 1000)
+    {
+       continue;
+    }
 
     Ptr<ConstantPositionMobilityModel> mob = CreateObject<ConstantPositionMobilityModel> ();
     mob -> SetPosition (seedPos);
@@ -825,11 +889,11 @@ VirtualSprings2dMobilityModel::AddAtaNode(uint32_t id)
   m_ataNodes.push_back(id); 
 }
 
-void
-VirtualSprings2dMobilityModel::AddIpv4Address (Ipv4Address addr)
-{
-  m_addresses.push_back (addr);
-}
+// void
+// VirtualSprings2dMobilityModel::AddIpv4Address (Ipv4Address addr)
+// {
+//   m_addresses.push_back (addr);
+// }
 
 void
 VirtualSprings2dMobilityModel::AddAtgNode(uint32_t id)

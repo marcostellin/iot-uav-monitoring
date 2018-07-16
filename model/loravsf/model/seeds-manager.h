@@ -29,6 +29,7 @@ namespace ns3 {
 
 struct Seed
 {
+  Vector origin;
   Vector pos;
   double weight;
 };
@@ -37,7 +38,7 @@ struct Token
 {
   Vector lastPos;
   Time lastTime;
-  uint32_t weight;
+  double weight;
   Vector speed;
   Time expires;
   uint32_t priority;
