@@ -39,6 +39,11 @@ struct ClusterInfo
   Time lastTime;
   Vector velocity;
   Vector lastPosition;
+  double weight;
+
+  ClusterInfo ():weight(0)
+  {
+  }
 };
 
 /**
@@ -63,8 +68,10 @@ public:
   void UpdateLostEds (Time tolerance);
   void FilterLostEds (Time interTol, Time lostTol);
   std::vector<ClusterInfo> GetClusterInfo (void);
-  void CreateClusters ();
-  void CreateClusters (uint16_t kMax);
+  std::vector<ClusterInfo> ComputeClustersInfo (point pt, int len, uint16_t k);
+  void CreateClusters (void);
+  uint16_t CreateClusters (point pt, int len, uint16_t kMax);
+  uint32_t GetEdsLostSize (void);
   //std::map<uint32_t, std::queue<EdsEntry>> FilterHistory (Time tolerance);
   //std::map<uint32_t, Vector> GetDirectionList (Time tolerance);
   //std::map<uint32_t, Vector> GetDirectionList (std::map<uint32_t, std::queue<EdsEntry>> filtered);
@@ -77,6 +84,10 @@ private:
   Vector GetDirection (void);
   void UpdateHistory (uint32_t id, Vector pos, Time delta);
   double ComputeAverageSilhoutte (point pt, int len, uint16_t k);
+
+  Vector ComputeClusterCenter (point pt, int len, uint16_t k);
+  Vector ComputeCenterMassVel (point pt, int len, uint16_t k, Vector centerMassCur);
+  Time   GetLastTime (point pt, int len, uint16_t k);
 
   void PrintHistory ();
   void PrintHistory (std::map<uint32_t, std::queue<EdsEntry>> map);

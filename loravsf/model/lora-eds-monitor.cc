@@ -21,6 +21,7 @@
 #include "ns3/log.h"
 #include "ns3/lora-tag.h"
 #include "ns3/node-list.h"
+#include "ns3/random-variable-stream.h"
 #include <algorithm>
 //#include "kmeans.cc"
 
@@ -204,15 +205,16 @@ LoraEdsMonitor::FilterLostEds (Time interTol, Time lostTol)
   //PrintHistory (m_eds_lost);
 }
 
-void
-LoraEdsMonitor::CreateClusters (uint16_t kMax)
+uint16_t
+LoraEdsMonitor::CreateClusters (point pt, int len, uint16_t kMax)
 {
   if (m_eds_lost.size () == 0)
-    return;
+    return 0;
+
+  //point pt = (point) malloc(sizeof(point_t)*m_eds_lost.size ());
 
   for (uint16_t j = 2; j <= kMax; j++ )
   {
-    point pt = (point) malloc(sizeof(point_t)*m_eds_lost.size ());
     uint16_t cnt = 0;
 
     for (std::map<uint32_t, std::queue<EdsEntry>>::iterator it = m_eds_lost.begin (); it != m_eds_lost.end (); ++it)
@@ -233,13 +235,16 @@ LoraEdsMonitor::CreateClusters (uint16_t kMax)
     if (m_eds_lost.size () >= j)
     {
       lloyd(pt, m_eds_lost.size (), j);
-      double sil = ComputeAverageSilhoutte (pt, m_eds_lost.size (), j);
+      double sil = ComputeAverageSilhoutte (pt, len, j);
       PrintPts (pt, m_eds_lost.size ());
       NS_LOG_INFO ("Silhoutte for k = " << j << " is " << sil);
+      
+      if (sil > 0.8)
+        return j;      
     }
-
-    free (pt);
   }
+
+  return 1;
 }
 
 double
@@ -358,6 +363,184 @@ LoraEdsMonitor::ComputeAverageSilhoutte (point pt, int len, uint16_t k)
 
 }
 
+std::vector<ClusterInfo>
+LoraEdsMonitor::ComputeClustersInfo (point pt, int len, uint16_t k)
+{
+  std::vector<ClusterInfo> clusters;
+
+  if (k == 0)
+    return clusters;
+
+  Ptr<UniformRandomVariable> rd = CreateObject<UniformRandomVariable> ();
+  rd->SetAttribute ("Min", DoubleValue (0));
+  rd->SetAttribute ("Max", DoubleValue (100000));
+
+  if (k == 1)
+  {
+    for (uint16_t i = 0; i < len; i++)
+    {
+      pt[i].group = 0;
+    }
+  }
+
+  uint32_t clusterMembers[k];
+  for (uint16_t i = 0; i < k; i++)
+    clusterMembers[i] = 0;
+
+  for (uint16_t i = 0; i < len; i++)
+  {
+    int group = pt[i].group;
+    clusterMembers[group] ++;
+  }
+
+  if (k > 0)
+  {
+    for (uint16_t i = 0; i < k; i++)
+    {
+      Vector centerMass = ComputeClusterCenter (pt, len, i);
+      NS_LOG_INFO ("Center Mass of cluster " << i << " is " << centerMass);
+      Vector centerMassVel = ComputeCenterMassVel (pt, len, i, centerMass);
+      NS_LOG_INFO ("Center Mass Velocity of cluster " << i << " is " << centerMassVel);
+      Time lastTime = GetLastTime (pt, len, i);
+      NS_LOG_INFO ("Last time of cluster " << i << " is " << lastTime.GetSeconds () << " s");
+
+      if (centerMassVel.GetLength () > 0)
+      {
+        ClusterInfo cluster;
+        cluster.id = rd -> GetInteger();
+        cluster.lastTime = lastTime;
+        cluster.velocity = centerMassVel;
+        cluster.lastPosition = centerMass;
+        cluster.weight = clusterMembers[i];
+
+        clusters.push_back (cluster);
+      }
+
+    }
+  }
+
+  // if (k == 1)
+  // {
+  //   for (uint16_t i = 0; i < len; i++)
+  //   {
+  //     pt[i].group = 0;
+  //   }
+
+  //   Vector centerMass = ComputeClusterCenter (pt, len, 0);
+  //   NS_LOG_INFO ("Center Mass of cluster " << 0 << " is " << centerMass);
+  //   Vector centerMassVel = ComputeCenterMassVel (pt, len, 0, centerMass);
+  //   NS_LOG_INFO ("Center Mass Velocity of cluster " << 0 << " is " << centerMassVel);
+  //   Time lastTime = GetLastTime (pt, len, 0);
+  //   NS_LOG_INFO ("Last time of cluster " << 0 << " is " << lastTime.GetSeconds () << " s");
+
+  //   if (centerMassVel.GetLength () > 0)
+  //   {
+  //     ClusterInfo cluster;
+  //     cluster.id = rd -> GetInteger();
+  //     cluster.lastTime = lastTime;
+  //     cluster.velocity = centerMassVel;
+  //     cluster.lastPosition = centerMass;
+  //     cluster.weight = clusterMembers[0];
+
+  //     clusters.push_back (cluster);
+  //   }
+  // }
+
+  return clusters;
+}
+
+Vector
+LoraEdsMonitor::ComputeClusterCenter (point pt, int len, uint16_t k)
+{
+  Vector centerMass;
+  uint16_t cnt = 0;
+
+  for (uint16_t i = 0; i < len; i++)
+  {
+    if (pt[i].group == k)
+    {
+      cnt ++;
+      centerMass.x += pt[i].x;
+      centerMass.y += pt[i].y;
+    }
+  }
+
+  centerMass.x /= (double)cnt;
+  centerMass.y /= (double)cnt;
+
+  return centerMass;
+}
+
+Vector
+LoraEdsMonitor::ComputeCenterMassVel (point pt, int len, uint16_t k, Vector centerMassCur)
+{
+  Vector centerMassVel;
+  Vector centerMassPrev;
+  uint16_t cnt = 0;
+  
+  for (uint16_t i = 0; i < len; i++)
+  {
+    if (pt[i].group == k)
+    {
+      uint32_t id = pt[i].id;
+
+      std::map<uint32_t, std::queue<EdsEntry> >::iterator it = m_eds_lost.find (id);
+
+      if (it != m_eds_lost.end ())
+      {
+        std::queue<EdsEntry> q = it -> second;
+
+        if (q.size () < 2)
+          continue;
+        else
+        {
+          cnt++;
+          centerMassPrev = centerMassPrev + Vector ( q.front().x, q.front().y, 0 );
+        }
+      }
+    }
+  }
+
+
+  if ( centerMassPrev.GetLength () == 0 )
+  {
+    NS_LOG_INFO ("The center of mass of previous position of cluster " << k << " is " << Vector(0,0,0));
+    return Vector (0,0,0);
+  }
+
+  centerMassPrev.x /= (double)cnt;
+  centerMassPrev.y /= (double)cnt;
+
+  NS_LOG_INFO ("The center of mass of previous position of cluster " << k << " is " << centerMassPrev);
+
+  return centerMassCur - centerMassPrev;
+}
+
+Time
+LoraEdsMonitor::GetLastTime (point pt, int len, uint16_t k)
+{
+  Time lastTime = Seconds (0);
+
+  for (uint16_t i = 0; i < len; i++)
+  {
+    if (pt[i].group == k)
+    {
+      uint32_t id = pt[i].id;
+
+      std::map<uint32_t, std::queue<EdsEntry> >::iterator it = m_eds_lost.find (id);
+
+      if (it != m_eds_lost.end ())
+      {
+        std::queue<EdsEntry> q = it -> second;
+        if (q.back().time > lastTime)
+          lastTime = q.back ().time;
+      }
+    }
+  }
+
+  return lastTime;
+}
+
 void
 LoraEdsMonitor::CreateClusters ()
 {
@@ -441,6 +624,11 @@ LoraEdsMonitor::GetClusterInfo ()
   return dirs;
 }
 
+uint32_t
+LoraEdsMonitor::GetEdsLostSize ()
+{
+  return m_eds_lost.size ();
+}
 
 
 Vector
