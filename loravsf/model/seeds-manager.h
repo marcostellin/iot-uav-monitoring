@@ -38,7 +38,7 @@ struct Token
 {
   Vector lastPos;
   Time lastTime;
-  uint32_t weight;
+  double weight;
   Vector speed;
   Time expires;
   uint32_t priority;

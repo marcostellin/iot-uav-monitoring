@@ -51,7 +51,18 @@ SeedsManager::AddToken (Token token)
 {
   for (uint16_t i = 0; i < m_tokens.size (); i++)
   {
+    double minX = m_tokens[i].lastPos.x - 30;
+    double maxX = m_tokens[i].lastPos.x + 30;
+    double minY = m_tokens[i].lastPos.y - 30;
+    double maxY = m_tokens[i].lastPos.y + 30;
+
     if (m_tokens[i].id == token.id)
+    {
+      m_tokens[i] = token;
+      return;
+    }
+
+    if (token.lastPos.x > minX && token.lastPos.x < maxX && token.lastPos.y > minY && token.lastPos.y < maxY)
     {
       m_tokens[i] = token;
       return;
@@ -88,7 +99,7 @@ SeedsManager::ComputeSeeds ()
 
     seeds.push_back (seed);
 
-    NS_LOG_INFO ("Seed. " << "Position=" << seed.pos << " Weight=" << seed.weight);
+    //NS_LOG_INFO ("Seed. " << "Position=" << seed.pos << " Weight=" << seed.weight);
 
   }
 
