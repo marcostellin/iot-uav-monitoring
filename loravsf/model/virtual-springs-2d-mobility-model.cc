@@ -138,6 +138,30 @@ VirtualSprings2dMobilityModel::CheckConnectivity ()
 }
 
 void
+VirtualSprings2dMobilityModel::CheckCoverage ()
+{
+  Ptr<VirtualSprings2dMobilityModel> mob = Ptr<VirtualSprings2dMobilityModel> (this);
+  //Vector pos = mob -> GetPosition ();
+
+  std::vector<int> nodeList;
+  for (uint16_t i = 0; i < m_atgNodes.size (); i++)
+  {
+    Ptr<Node> ed = NodeList::GetNode (m_atgNodes[i]);
+    Ptr<MobilityModel> oMob = ed -> GetObject<MobilityModel> ();
+    //Vector oPos = oMob -> GetPosition ();
+
+    double lb = m_estimator -> GetAtgLinkBudget ( mob, oMob);
+
+    if (lb > 0)
+      nodeList.push_back (m_atgNodes[i]); 
+  }  
+
+  m_nodesInRangeTrace (nodeList);
+
+  Simulator::Schedule (Seconds (1), &VirtualSprings2dMobilityModel::CheckCoverage, this);
+}
+
+void
 VirtualSprings2dMobilityModel::UpdateHistory ()
 {
   m_monitor -> UpdateHistory (Seconds(M_SEC_RETAIN_EDS));
@@ -169,6 +193,8 @@ VirtualSprings2dMobilityModel::DoInitialize (void)
 
   if (m_predictionMode == 1)
     Simulator::Schedule (Seconds (10), &VirtualSprings2dMobilityModel::UpdateHistory, this);
+
+  Simulator::Schedule (Seconds (1), &VirtualSprings2dMobilityModel::CheckCoverage, this);
 
   DoInitializePrivate ();
   MobilityModel::DoInitialize ();
@@ -206,9 +232,26 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
 
   if (m_predictionMode == 3)
   {
+    uint16_t maxClusters = 3;
     m_monitor -> UpdateLostEds (Seconds(65));
     m_monitor -> FilterLostEds (Seconds (40), Minutes (3) );
-    m_monitor -> CreateClusters (3);
+
+    uint32_t len = m_monitor -> GetEdsLostSize ();
+    point pt = (point) malloc(sizeof(point_t)*len);
+
+    uint16_t numClust = m_monitor -> CreateClusters (pt, len, maxClusters);
+
+    std::vector<ClusterInfo> clusters = m_monitor -> ComputeClustersInfo (pt, len, numClust);
+
+    std::vector<Token> tokens = GenerateTokens (clusters);
+
+    for (uint16_t i = 0; i < tokens.size (); i++)
+    {
+      SendToken (tokens[i]);
+      m_manager -> AddToken (tokens[i]);
+    }
+
+    free(pt);
   }
 
   olsr::RoutingTableEntry entry = VirtualSprings2dMobilityModel::HasPathToBs();
@@ -231,15 +274,15 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
     }
 
     //Start detach procedure if there are some seeds
-    if (m_manager -> GetSeeds ().size () > 0)
-    {
-      uint32_t simNode = FindMostSimilarNode ();
-      if ( (simNode == 0 || m_id > simNode) && !m_detach)
-      {
-        m_detach = true;
-        Simulator::Schedule (Minutes (5), &VirtualSprings2dMobilityModel::Reattach, this);
-      }
-    }
+    // if (m_manager -> GetSeeds ().size () > 0)
+    // {
+    //   uint32_t simNode = FindMostSimilarNode ();
+    //   if ( (simNode == 0 || m_id > simNode) && !m_detach)
+    //   {
+    //     m_detach = false;
+    //     Simulator::Schedule (Minutes (5), &VirtualSprings2dMobilityModel::Reattach, this);
+    //   }
+    // }
 
     //Move according to forces if m_pause intervals have passed...
     if (m_pause == 0 || m_load == 0) 
@@ -314,11 +357,11 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
   
 }
 
-void
-VirtualSprings2dMobilityModel::Reattach ()
-{
-  m_detach = false;
-}
+// void
+// VirtualSprings2dMobilityModel::Reattach ()
+// {
+//   m_detach = false;
+// }
 
 void
 VirtualSprings2dMobilityModel::InitializeMonitors ()
@@ -460,12 +503,13 @@ VirtualSprings2dMobilityModel::GenerateTokens (std::vector<ClusterInfo> clusters
     Token t;
     t.lastPos = c.lastPosition;
     t.lastTime = c.lastTime;
-    t.weight = 100;
+    t.weight = c.weight;
     t.speed = c.velocity;
     t.expires = Simulator::Now () + Minutes (10);
     t.id = m_id*10 + c.id;
 
     tokens.push_back (t);
+    NS_LOG_LOGIC ("Generated token " << t.id << " lastPos=" << t.lastPos << " speed=" << t.speed );
   }
 
   return tokens;
@@ -570,7 +614,7 @@ VirtualSprings2dMobilityModel::ComputeAtaForce()
 
     double lb = m_estimator -> GetAtaLinkBudget ( Ptr<MobilityModel> (this), otherMob);
 
-    double k_ata = m_kAta + m_ataNodes.size ()/m_neighbours.size ();
+    double k_ata = m_kAta + m_ataNodes.size ()/m_neighbours.size () - 1;
 
     double disp = m_lbReqAta - lb;
     Vector diff = otherPos - myPos;
@@ -669,7 +713,7 @@ VirtualSprings2dMobilityModel::ComputeSeedForce ()
     //double priority = seeds.end () - it;
     Vector seedPos = seed.pos;
     //double k_seed = seed.weight;
-    double k_seed = 1;
+    double k_seed = seed.weight;
 
     if (CalculateDistance (pos, seed.origin) > 1000)
     {

@@ -132,6 +132,7 @@ private:
   Token                   GenerateToken (void);
   void                    Reattach (void);
   std::vector<Token>      GenerateTokens (std::vector<ClusterInfo> clusters);
+  void                    CheckCoverage (void);
 
   virtual void DoDispose (void);
   virtual void DoInitialize (void);
