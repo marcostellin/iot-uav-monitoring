@@ -168,6 +168,7 @@ private:
   bool m_detach;
 
   bool m_kAtgPlusMode; //<! if true give more priority to nodes exclusively covered by the current UAV
+  uint16_t m_kMode;
 
 
   uint32_t m_id;  //<! id of the UAV

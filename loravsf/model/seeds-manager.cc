@@ -56,11 +56,11 @@ SeedsManager::AddToken (Token token)
     double minY = m_tokens[i].lastPos.y - 30;
     double maxY = m_tokens[i].lastPos.y + 30;
 
-    if (m_tokens[i].id == token.id)
-    {
-      m_tokens[i] = token;
-      return;
-    }
+    // if (m_tokens[i].id == token.id)
+    // {
+    //   m_tokens[i] = token;
+    //   return;
+    // }
 
     if (token.lastPos.x > minX && token.lastPos.x < maxX && token.lastPos.y > minY && token.lastPos.y < maxY)
     {

@@ -91,6 +91,12 @@ VirtualSprings2dMobilityModel::GetTypeId (void)
                    MakeIntegerAccessor (&VirtualSprings2dMobilityModel::m_predictionMode),
                    MakeIntegerChecker<uint16_t> ())
 
+    .AddAttribute ("KMode",
+                   "0=Di Felice, 1=LoRaUAV",
+                   IntegerValue (0),
+                   MakeIntegerAccessor (&VirtualSprings2dMobilityModel::m_kMode),
+                   MakeIntegerChecker<uint16_t> ())
+
     .AddAttribute ("BsPosition", "Position of BS",
                     VectorValue (Vector (200.0, 200.0, 0.0)), 
                     MakeVectorAccessor (&VirtualSprings2dMobilityModel::m_bsPos),
@@ -233,7 +239,7 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
   if (m_predictionMode == 3)
   {
     uint16_t maxClusters = 3;
-    m_monitor -> UpdateLostEds (Seconds(65));
+    m_monitor -> UpdateLostEds (Minutes(3));
     m_monitor -> FilterLostEds (Seconds (40), Minutes (3) );
 
     uint32_t len = m_monitor -> GetEdsLostSize ();
@@ -272,17 +278,6 @@ VirtualSprings2dMobilityModel::DoInitializePrivate (void)
       Token newToken;
       m_token = newToken;
     }
-
-    //Start detach procedure if there are some seeds
-    // if (m_manager -> GetSeeds ().size () > 0)
-    // {
-    //   uint32_t simNode = FindMostSimilarNode ();
-    //   if ( (simNode == 0 || m_id > simNode) && !m_detach)
-    //   {
-    //     m_detach = false;
-    //     Simulator::Schedule (Minutes (5), &VirtualSprings2dMobilityModel::Reattach, this);
-    //   }
-    // }
 
     //Move according to forces if m_pause intervals have passed...
     if (m_pause == 0 || m_load == 0) 
@@ -454,11 +449,6 @@ VirtualSprings2dMobilityModel::ComputeTotalForce ()
     forceSeed = VirtualSprings2dMobilityModel::ComputeSeedForce ();
   }
 
-  if (m_detach && forceSeed.GetLength() > 0)
-  {
-    forceAtg = Vector (0,0,0);
-  }
-  
   Vector force = forceAta + forceAtg + forceSeed;
 
   NS_LOG_DEBUG ("AtG Force = " << forceAtg << ", AtA force = " << forceAta << ", Seed Force = " << forceSeed);
@@ -710,9 +700,7 @@ VirtualSprings2dMobilityModel::ComputeSeedForce ()
   for (std::vector<Seed>::iterator it = seeds.begin (); it != seeds.end (); ++it)
   { 
     Seed seed = (*it);
-    //double priority = seeds.end () - it;
     Vector seedPos = seed.pos;
-    //double k_seed = seed.weight;
     double k_seed = seed.weight;
 
     if (CalculateDistance (pos, seed.origin) > 1000)
@@ -874,10 +862,8 @@ VirtualSprings2dMobilityModel::NumSharedEds (uint32_t ataId)
   std::map<uint32_t, EdsEntry> neighEdsList = mob -> GetEdsList ();
 
   uint32_t counter = 0;
-  //NS_LOG_LOGIC ("Node " << ataId << " EDs: ");
   for (std::map<uint32_t, EdsEntry>::iterator it = neighEdsList.begin (); it != neighEdsList.end (); ++it)
   {
-    //NS_LOG_LOGIC (it -> first);
     if ( m_eds.find (it -> first) != m_eds.end () )
       counter ++;
   }
@@ -914,12 +900,6 @@ VirtualSprings2dMobilityModel::AddAtaNode(uint32_t id)
 {
   m_ataNodes.push_back(id); 
 }
-
-// void
-// VirtualSprings2dMobilityModel::AddIpv4Address (Ipv4Address addr)
-// {
-//   m_addresses.push_back (addr);
-// }
 
 void
 VirtualSprings2dMobilityModel::AddAtgNode(uint32_t id)
